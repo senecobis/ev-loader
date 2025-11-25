@@ -34,7 +34,14 @@ class Sequence(Dataset):
     #         ├── events.h5
     #         └── rectify_map.h5
 
-    def __init__(self, seq_path: Path, mode: str='train', delta_t_ms: int=50, num_bins: int=15, representation: str='voxel'):
+    def __init__(self, 
+                seq_path: Path, 
+                mode: str='train', 
+                delta_t_ms: int=50, 
+                num_bins: int=15, 
+                representation: str='voxel',
+                load_opt_flow: bool=True
+                ):
         assert num_bins >= 1
         assert delta_t_ms <= 100, 'adapt this code, if duration is higher than 100 ms'
         assert seq_path.is_dir()
@@ -46,6 +53,7 @@ class Sequence(Dataset):
         self.sequence_path = seq_path
         self.sequence_id = seq_path.stem
         self.representation = representation
+        self.load_opt_flow = load_opt_flow
 
         # Save output dimensions
         self.height = 480
@@ -89,13 +97,6 @@ class Sequence(Dataset):
         # Check if the number of dynamic masks and disparity GTs match
         if not len(self.dyn_masks_pathstrings) == len(self.disp_gt_pathstrings):
             raise ValueError("Number of dynamic masks and disparity GTs do not match for {}".format(seq_path))
-
-        # Load poses
-        # TODO if the poses come from RAMP-VO the first pose is of index 1 not 0
-        # self.poses_folder_path = seq_path / "poses"
-        # self.poses_path = self.poses_folder_path / "poses.txt"
-        # self.poses_q_t = np.loadtxt(self.poses_path)
-        # self.poses = poses_array_to_transformation_matrix(self.poses_q_t)
 
         # Remove first disparity path and corresponding timestamp.
         # This is necessary because we do not have events before the first disparity map.
@@ -141,7 +142,7 @@ class Sequence(Dataset):
         self.optical_flow_path = seq_path / 'flow'
         self.forward_flow_path = self.optical_flow_path / 'forward' # flow from t_i to t_{i+1}
         self.backward_flow_path = self.optical_flow_path / 'backward' # flow from t_{i-1} to t_i
-        self.flow_exists = self.forward_flow_path.is_dir() and self.backward_flow_path.is_dir()
+        self.flow_exists = self.load_opt_flow and self.forward_flow_path.is_dir() and self.backward_flow_path.is_dir()
         if not self.flow_exists:
             # print(f"Optical flow not found for {seq_path} -> Not loading the optical flow for this sequence")
             pass

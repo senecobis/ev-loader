@@ -30,11 +30,17 @@ class DatasetProvider:
         
         assert dataset_path.is_dir(), str(dataset_path)
         
-    def get_train_dataset(self):
+    def get_train_dataset(self, load_opt_flow: bool = True):
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
-            train_sequences.append(Sequence(seq_path=child, mode='train', delta_t_ms=self.delta_t_ms, num_bins=self.num_bins, representation=self.representation))
+            train_sequences.append(Sequence(seq_path=child, 
+                                            mode='train', 
+                                            delta_t_ms=self.delta_t_ms, 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            load_opt_flow=load_opt_flow
+                                            ))
         return torch.utils.data.ConcatDataset(train_sequences)
     
     def get_recurrent_train_dataset(self, sequence_len:int = 2):
