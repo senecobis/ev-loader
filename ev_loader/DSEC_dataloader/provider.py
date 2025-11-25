@@ -35,7 +35,7 @@ class DatasetProvider:
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
             train_sequences.append(Sequence(seq_path=child, mode='train', delta_t_ms=self.delta_t_ms, num_bins=self.num_bins, representation=self.representation))
-        return train_sequences
+        return torch.utils.data.ConcatDataset(train_sequences)
     
     def get_recurrent_train_dataset(self, sequence_len:int = 2):
         assert self.train_path.is_dir(), str(self.train_path)
