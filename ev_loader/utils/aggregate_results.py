@@ -54,4 +54,4 @@ if __name__ == "__main__":
     aggregate_results(path_to_json=f"{args.path}/results.json", save_path=f"{args.path}/aggregated_results.json")
     
     # Example usage:
-    # python suppressor/utils/aggregate_results.py /home/pellerito/suppressor_/results/EV-IMO_2025-04-30_14-08-02/model_epoch_20
+    # python ev_loader/utils/aggregate_results.py /home/pellerito/ev_loader_/results/EV-IMO_2025-04-30_14-08-02/model_epoch_20

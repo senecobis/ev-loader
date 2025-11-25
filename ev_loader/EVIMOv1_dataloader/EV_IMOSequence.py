@@ -3,7 +3,7 @@ Script to load EVIMO v1 dataset for training by Roberto Pellerito rpellerito@ifi
 """
 
 # TODO: add same agumentation of DSEC
-# TODO: chnage to relative import suppressor functions
+# TODO: chnage to relative import ev_loader functions
 # TODO: batch load events more efficently. Load all the events then collate them by slicing the events according to the maximum number of events in a batch
 
 import torch

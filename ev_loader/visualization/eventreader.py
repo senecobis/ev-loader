@@ -3,7 +3,7 @@ import weakref
 
 import h5py
 
-from suppressor.utils.eventslicer import EventSlicer
+from ev_loader.utils.eventslicer import EventSlicer
 
 
 class EventReaderAbstract:

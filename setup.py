@@ -6,7 +6,7 @@ with open('requirement.txt') as f:
 setup(
     name="ev_loader",
     version="0.1.0",  # Update version as needed
-    author="Your Name",
+    author="Roberto Pellerito",
     author_email="rpellerito@ifi.uzh.ch",
     description="A Python package for loading datasets",
     long_description=open("README.md").read(),

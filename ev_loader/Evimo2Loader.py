@@ -6,10 +6,10 @@ import rerun as rr
 from pathlib import Path
 from scipy.spatial.transform import Rotation as R
 
-from suppressor.utils.utils_quaternions import translation_and_quaternion_to_pose
-from suppressor.utils.utils import rerun_log_pose_image
-from suppressor.DSEC_dataloader.sequence import Sequence
-from suppressor.utils.representations import VoxelGrid
+from ev_loader.utils.utils_quaternions import translation_and_quaternion_to_pose
+from ev_loader.utils.utils import rerun_log_pose_image
+from ev_loader.DSEC_dataloader.sequence import Sequence
+from ev_loader.utils.representations import VoxelGrid
 
 import matplotlib.pyplot as plt
 

@@ -7,9 +7,9 @@ from collections import defaultdict
 from matplotlib import pyplot as plt
 
 from MaskFlow import MaskFlow
-from suppressor.loss.IoUs import IoUs
-from suppressor.DSEC_dataloader.provider import DatasetProvider
-from suppressor.utils.utils import open_config_json,get_device
+from ev_loader.loss.IoUs import IoUs
+from ev_loader.DSEC_dataloader.provider import DatasetProvider
+from ev_loader.utils.utils import open_config_json,get_device
 
 
 class Validate:
@@ -94,10 +94,10 @@ class Validate:
 
     
 if __name__ == "__main__":
-    config = open_config_json("suppressor/metrics/config/sensitivity_test.json")
+    config = open_config_json("ev_loader/metrics/config/sensitivity_test.json")
     validator = Validate(config=config)
     validator.validate_model(
-        save_path="suppressor/metrics/sensitivity_plots"
+        save_path="ev_loader/metrics/sensitivity_plots"
         )
     # validate_models(
     #     config_path="configs/validate.json", 

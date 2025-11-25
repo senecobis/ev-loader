@@ -1,4 +1,4 @@
-from suppressor.DSEC_dataloader.sequence import Sequence
+from ev_loader.DSEC_dataloader.sequence import Sequence
 from pathlib import Path
 import torch
 

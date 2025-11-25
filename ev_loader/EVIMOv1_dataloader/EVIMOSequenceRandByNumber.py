@@ -14,7 +14,7 @@ We consider a number of events equivalent to a time window.
 import random
 import torch
 from .EVIMOSequence import EVIMOSequence
-from suppressor.utils.utils_events_split import split_events
+from ev_loader.utils.utils_events_split import split_events
 
 
 class EVIMOSequenceRandByNumber(EVIMOSequence):

@@ -1,4 +1,4 @@
-from suppressor.DSEC_dataloader.SemanticSequence import SemanticSequence
+from ev_loader.DSEC_dataloader.SemanticSequence import SemanticSequence
 from pathlib import Path
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval

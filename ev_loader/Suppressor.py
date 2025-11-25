@@ -1,9 +1,9 @@
 import numpy as np
-from suppressor.RigidFlow import RigidFlow
-from suppressor.utils.utils_matrix_op import coordinates_flow3D, magnitude_of, coordinates_to_image
-from suppressor.utils.utils_losses import ase_loss, magnitude_difference_01_loss, mag_diff_loss
+from ev_loader.RigidFlow import RigidFlow
+from ev_loader.utils.utils_matrix_op import coordinates_flow3D, magnitude_of, coordinates_to_image
+from ev_loader.utils.utils_losses import ase_loss, magnitude_difference_01_loss, mag_diff_loss
 
-class Suppressor():
+class ev_loader():
     def __init__(self, K, image_shape):
         self.K = K
         self.image_shape = image_shape

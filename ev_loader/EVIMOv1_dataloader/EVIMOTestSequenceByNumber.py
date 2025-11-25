@@ -15,7 +15,7 @@ import random
 import torch
 import numpy as np
 from .EVIMOSequence import EVIMOSequence
-from suppressor.utils.utils_events_split import split_events
+from ev_loader.utils.utils_events_split import split_events
 
 
 class EVIMOTestSequenceByNumber(EVIMOSequence):

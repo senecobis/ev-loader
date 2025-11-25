@@ -110,7 +110,7 @@ class MaskFlow(LinearMaskExtrapolator):
             return None
         
         
-from suppressor.utils.utils import plot_arrows
+from ev_loader.utils.utils import plot_arrows
 
 if __name__ == "__main__":
     # Example usage
