@@ -9,6 +9,7 @@ from .FlowTestSequence import FlowTestSequence
 from .HydraSequence import HydraSequence
 from .HydraTestSequence import HydraTestSequence
 from .SemanticSequence import SemanticSequence
+from .HighFreqHydraSequence import HighFreqHydraSequence
 from ..EVIMOv1_dataloader.EVIMOSequence import EVIMOSequence
 from ..EVIMOv1_dataloader.EVIMOTestSequence import EVIMOTestSequence
 from ..EVIMOv1_dataloader.EV_IMOSequence import EV_IMOSequence
@@ -16,7 +17,6 @@ from ..EVIMOv1_dataloader.EVIMOFramesSequence import EVIMOFramesSequence
 from ..EVIMOv1_dataloader.EVIMOTestSequenceImportByNumber import EVIMOTestSequenceImportByNumber
 from ..EVIMOv1_dataloader.EVIMOSequenceRandByNumber import EVIMOSequenceRandByNumber
 from ..EVIMOv1_dataloader.EVIMOTestSequenceByNumber import EVIMOTestSequenceByNumber
-from .HighFreqHydraSequence import HighFreqHydraSequence
 
 class DatasetProvider:
     def __init__(self, dataset_path: Path, delta_t_ms: int=50, num_bins=15, representation: str = ''):
