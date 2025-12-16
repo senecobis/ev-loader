@@ -10,7 +10,7 @@ from pathlib import Path
 from .EVIMOTestSequence import EVIMOTestSequence
 from ..utils.representations import EventToStack_Numpy
 from ev_loader.utils.representations import VoxelGrid
-from ev_loader.DSEC_dataloader.sequence import Sequence
+from ev_loader.DSEC_dataloader.Sequence import Sequence
 
 
 class UnpackedEVIMO():

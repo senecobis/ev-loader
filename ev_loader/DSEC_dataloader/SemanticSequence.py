@@ -3,7 +3,7 @@ import cv2
 import torch
 import json
 from pathlib import Path
-from .sequence import Sequence
+from .Sequence import Sequence
 from ..utils.labels import labels_11, labels_19
 import pycocotools.mask as mask_util
 from ..utils.img_event_ref_transform_DSEC import TransformImageToEventRef

@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 
 from ev_loader.utils.utils_quaternions import translation_and_quaternion_to_pose
 from ev_loader.utils.utils import rerun_log_pose_image
-from ev_loader.DSEC_dataloader.sequence import Sequence
+from ev_loader.DSEC_dataloader.Sequence import Sequence
 from ev_loader.utils.representations import VoxelGrid
 
 import matplotlib.pyplot as plt

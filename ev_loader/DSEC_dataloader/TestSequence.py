@@ -1,4 +1,4 @@
-from ..DSEC_dataloader.sequence import Sequence
+from .Sequence import Sequence
 from pathlib import Path
 import numpy as np 
 import torch

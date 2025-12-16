@@ -1,5 +1,5 @@
 from ..utils.representations import create_cnt_encoding
-from .sequence import Sequence
+from .Sequence import Sequence
 from pathlib import Path
 import numpy as np
 import torch
