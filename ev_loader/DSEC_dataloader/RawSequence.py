@@ -12,8 +12,9 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_batch
 
 class RawSequence(Sequence):
-    def __init__(self, **kwargs):
+    def __init__(self, num_events: int = 10000, **kwargs):
         super().__init__(**kwargs)
+        self.num_events = num_events  # Number of events per sample
 
     def __getitem__(self, index):
         ts_end = self.timestamps[index]
@@ -28,12 +29,27 @@ class RawSequence(Sequence):
         self.p = p
         self.t = t
 
-        raw_events_np = np.stack([x_rect, y_rect, p, t], axis=1) # Shape: [N, 4]
-        raw_events_tensor = torch.from_numpy(raw_events_np).float()
         event_representation = self.get_event_representation(x_rect, y_rect, p, t)
 
+        # Downsample events
+        N = len(x_rect)
+        if N > self.num_events:
+            indices = np.random.choice(N, self.num_events, replace=False)
+            indices.sort()
+        else:
+            indices = np.arange(N)
+
+        down_events = np.stack([
+            x_rect[indices], 
+            y_rect[indices], 
+            p[indices], 
+            t[indices]
+            ], axis=1)
+        events_tensor = torch.from_numpy(down_events).float()
+        
+
         data = Data(
-            x=raw_events_tensor,
+            x=events_tensor,
             file_index=torch.tensor(file_index), 
             sequence_id=self.sequence_id, 
             frame=frame.unsqueeze(0),

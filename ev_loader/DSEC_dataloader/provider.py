@@ -94,7 +94,7 @@ class DatasetProvider:
                 test_sequences.pop()
         return test_sequences
     
-    def get_raw_train_dataset(self):
+    def get_raw_train_dataset(self, num_events: int):
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
@@ -103,6 +103,7 @@ class DatasetProvider:
                                             delta_t_ms=self.delta_t_ms, 
                                             num_bins=self.num_bins, 
                                             representation=self.representation,
+                                            num_events=num_events
                                             ))
         return torch.utils.data.ConcatDataset(train_sequences)
     
