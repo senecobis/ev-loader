@@ -62,7 +62,7 @@ class RawSequence(Sequence):
 if __name__ == '__main__':
 
     seq_abs_path = Path("/data/scratch/pellerito/datasets/DSEC/test/zurich_city_14_c")
-    dsec_seq = RawSequence(seq_path=seq_abs_path, num_bins=2, representation="stack")
+    dsec_seq = RawSequence(seq_path=seq_abs_path, num_bins=2, representation="stack", num_events=50000, mode='test', delta_t_ms=50)
 
     # Use PyG DataLoader
     # batch_size=4 means it will grab 4 samples and merge their events
@@ -79,16 +79,16 @@ if __name__ == '__main__':
         # It tells you which sample in the batch (0, 1, 2, or 3) the event belongs to.
         batch_indices = batch.batch 
         
-        print(f"Total events in batch: {all_events.shape[0]}")
-        print(f"Batch Vector: {batch_indices}")
-        
-        # Accessing the images (PyG stacks fixed size attributes normally)
-        # Shape: [4, C, H, W]
-        frames = batch.frame
-        print(f"Frames shape: {frames.shape}")
+        print(f"\nTotal events in batch: {all_events.shape[0]}")
 
         dense_x, mask = to_dense_batch(batch.x, batch.batch)
         print(f"Dense x shape: {dense_x.shape}, Mask shape: {mask.shape}")
 
         dense_masked_x = dense_x * mask.unsqueeze(-1)
         print(f"Dense Masked x shape: {dense_masked_x.shape}")
+
+        # Check if the mask containts any zeros (it shouldn't in this case)
+        if torch.any(mask == 0):
+            print("Mask contains zeros!")
+        else:
+            pass
