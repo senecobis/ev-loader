@@ -36,7 +36,7 @@ class TestSequence(Sequence):
     
     def __getitem__(self, index):
         if self.FPS == self.FPS_GT:
-            return super().__getitem__(index)
+            return self.getitem(index)
         else:
             return self.getitem_by_time(index)
     
@@ -74,6 +74,45 @@ class TestSequence(Sequence):
             'frame': frame,
             'is_GT_available': is_GT_available
         }
+        return output
+    
+    def getitem(self, index):
+        ts_end = self.timestamps[index]
+        ts_start = ts_end - self.delta_t_us
+
+        file_index = self.file_index(index)
+        disparity = self.disparity_gt(index)
+        dynamic_mask = self.dynamic_mask_gt(index)
+        depth = self.depth_gt(disparity)
+        frame = self.frame_gt(index)
+        
+        x_rect, y_rect, p, t = self.get_rectified_events_start_end_time(ts_start, ts_end)
+        self.x_rect = x_rect
+        self.y_rect = y_rect
+        self.p = p
+        self.t = t
+        event_representation = self.get_event_representation(x_rect, y_rect, p, t)
+
+        raw_events = np.stack([x_rect, y_rect, p, t], axis=1)
+        events_tensor = torch.from_numpy(raw_events).float()
+
+        output = {
+            'file_index': file_index,
+            'sequence_id': self.sequence_id,
+            'disparity_gt': disparity,
+            'dynamic_mask_gt': dynamic_mask,
+            'depth_gt': depth,
+            'intrinsics': self.K,
+            'representation': {"left": event_representation, "raw": events_tensor},
+            'frame': frame,
+            'is_GT_available': True
+        }
+
+        if self.flow_exists and index < len(self.forward_flow_pathstrings):
+            forward_flow = self.forward_flow_gt(index)
+            backward_flow = self.backward_flow_gt(index)
+            output['forward_flow_gt'] = forward_flow
+            output['backward_flow_gt'] = backward_flow
         return output
     
 if __name__ == '__main__':

@@ -66,7 +66,8 @@ class DatasetProvider:
         assert self.test_path.is_dir(), str(self.test_path)
         test_sequences = list()
         for child in sorted(self.test_path.iterdir()):
-            test_sequences.append(TestSequence(seq_path=child, mode='test', delta_t_ms=self.delta_t_ms, num_bins=self.num_bins, representation=self.representation, FPS=FPS))
+            test_sequences.append(TestSequence(
+                seq_path=child, mode='test', delta_t_ms=self.delta_t_ms, num_bins=self.num_bins, representation=self.representation, FPS=FPS))
         return test_sequences
     
     def get_semantic_test_dataset(self, class_format='19'):
