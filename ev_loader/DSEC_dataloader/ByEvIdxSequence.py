@@ -24,6 +24,9 @@ class ByEvIdxSequence(Sequence):
         id_start = index * self.num_events
         id_end = id_start + self.num_events
 
+        if id_end > self.__len__():
+            id_end = self.__len__()
+
         x = self.events['x'][id_start:id_end]
         y = self.events['y'][id_start:id_end]
         p = self.events['p'][id_start:id_end]
