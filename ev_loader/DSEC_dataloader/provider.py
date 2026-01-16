@@ -7,8 +7,8 @@ from .RecurrentSequence import RecurrentSequence
 from .FlowSequence import FlowSequence
 from .FlowTestSequence import FlowTestSequence
 from .SemanticSequence import SemanticSequence
-from .HighFreqHydraSequence import HighFreqHydraSequence
 from .RawSequence import RawSequence
+from .ByEvIdxSequence import ByEvIdxSequence
 class DatasetProvider:
     def __init__(self, dataset_path: Path, delta_t_ms: int=50, num_bins=15, representation: str = ''):
         dataset_path = Path(dataset_path)
@@ -108,6 +108,17 @@ class DatasetProvider:
                                             ))
         return torch.utils.data.ConcatDataset(train_sequences)
     
+    def get_byIdx_train_dataset(self, num_events: int):
+        assert self.train_path.is_dir(), str(self.train_path)
+        train_sequences = list()
+        for child in sorted(self.train_path.iterdir()):
+            train_sequences.append(ByEvIdxSequence(seq_path=child, 
+                                            mode='train', 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            num_events=num_events
+                                            ))
+        return torch.utils.data.ConcatDataset(train_sequences)
 
 if __name__ == "__main__":
     dsec_dir = "/data/scratch/pellerito/datasets/DSEC"
