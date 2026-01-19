@@ -26,6 +26,7 @@ class ByEvIdxSequence(Sequence):
 
         if id_end > self.__len__():
             id_end = self.__len__()
+            id_start = id_end - self.num_events
 
         x = self.events['x'][id_start:id_end]
         y = self.events['y'][id_start:id_end]
@@ -50,7 +51,7 @@ class ByEvIdxSequence(Sequence):
 if __name__ == '__main__':
 
     seq_abs_path = Path("/data/scratch/pellerito/datasets/DSEC/test/zurich_city_14_c")
-    dsec_seq = ByEvIdxSequence(seq_path=seq_abs_path, num_bins=2, representation="stack", num_events=50000, mode='test', delta_t_ms=50)
+    dsec_seq = ByEvIdxSequence(seq_path=seq_abs_path, num_bins=2, representation="stack", num_events=50000, mode='test')
 
     # Use PyG DataLoader
     # batch_size=4 means it will grab 4 samples and merge their events
