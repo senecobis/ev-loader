@@ -12,10 +12,22 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_batch
 
 class ByEvIdxSequence(Sequence):
-    def __init__(self, num_events: int = 10000, **kwargs):
+    def __init__(self, num_events: int = 10000, voxels_subsample_factor: int = 100, **kwargs):
         super().__init__(**kwargs)
         self.num_events = num_events  # Number of events per sample
+        self.voxels_subsample_factor = voxels_subsample_factor
         self.events = self.event_slicers["left"].events
+    
+    def get_stacked_voxel_representation(self, x, y, p, t):
+        n_voxels = x.shape[-1]//self.voxels_subsample_factor
+
+        voxel_sequence = []
+        for seq_n in range(1, n_voxels+1):
+            seq_index = seq_n * self.voxels_subsample_factor
+            voxel = self._events_to_voxel_grid(x=x[:seq_index], y=y[:seq_index], p=p[:seq_index], t=t[:seq_index])   # (C, H, W)
+            voxel = voxel.unsqueeze(0)  # (1, C, H, W)
+            voxel_sequence.append(voxel)
+        return torch.cat(voxel_sequence, dim=0)  # (seq_len, C, H, W)
     
     def __len__(self):
         return len(self.events['t'])//self.num_events  # Number of events in the sequence
@@ -24,9 +36,9 @@ class ByEvIdxSequence(Sequence):
         id_start = index * self.num_events
         id_end = id_start + self.num_events
 
-        if id_end > self.__len__():
-            id_end = self.__len__()
-            id_start = id_end - self.num_events
+        if id_end > len(self.events['t']):
+            id_end = len(self.events['t'])
+            id_start = max(0, id_end - self.num_events)
 
         x = self.events['x'][id_start:id_end]
         y = self.events['y'][id_start:id_end]
@@ -34,15 +46,15 @@ class ByEvIdxSequence(Sequence):
         t = self.events['t'][id_start:id_end]
 
         x_rect, y_rect = self.get_rectified_events(x, y)        
-        event_representation = self.get_event_representation(x_rect, y_rect, p, t)
+        event_representation = self.get_stacked_voxel_representation(x_rect, y_rect, p, t)
 
-        down_events = np.stack([x_rect, y_rect, p, t], axis=1)
-        events_tensor = torch.from_numpy(down_events).float()
+        events = np.stack([x_rect, y_rect, p, t], axis=1)
+        events_tensor = torch.from_numpy(events).float()
 
         data = Data(
             x=events_tensor,
             sequence_id=self.sequence_id, 
-            event_representation=event_representation.unsqueeze(0) 
+            event_representation=event_representation 
         )
 
         return data
