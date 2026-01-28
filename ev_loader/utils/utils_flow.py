@@ -14,7 +14,6 @@ from pathlib import Path
 from enum import Enum, auto
 
 import imageio
-imageio.plugins.freeimage.download()
 import numpy as np
 
 import torch
