@@ -5,7 +5,6 @@ torch-tb-profiler==0.4.0
 numpy==1.24.4
 pandas
 h5py
-opencv-python==4.5.5.64
 matplotlib==3.5.1
 progress==1.6
 scipy==1.10
