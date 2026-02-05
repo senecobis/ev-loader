@@ -10,7 +10,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from .EVIMOSequence import EVIMOSequence
-from ..utils.representations import events_to_channels, MeanTimestamps
+from ..representations.representations import events_to_channels, MeanTimestamps
 
 
 class EV_IMOSequence(EVIMOSequence):

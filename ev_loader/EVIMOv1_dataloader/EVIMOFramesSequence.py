@@ -8,8 +8,8 @@ import torch
 import numpy as np
 from pathlib import Path
 from .EVIMOTestSequence import EVIMOTestSequence
-from ..utils.representations import EventToStack_Numpy
-from ev_loader.utils.representations import VoxelGrid
+from ..representations.representations import EventToStack_Numpy
+from ev_loader.representations.representations import VoxelGrid
 from ev_loader.DSEC_dataloader.Sequence import Sequence
 
 

@@ -12,7 +12,7 @@ import numpy as np
 from pathlib import Path
 from torch.utils.data import Dataset
 
-from ..utils.representations import VoxelGrid, MeanTimestamps, EventToStack_Numpy
+from ..representations.representations import VoxelGrid, MeanTimestamps, EventToStack_Numpy
 from ..utils.eventslicer import EventSlicer
 from ..utils.utils_flow import load_flow
 

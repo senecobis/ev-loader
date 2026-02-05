@@ -1,4 +1,4 @@
-from ..utils.representations import create_cnt_encoding
+from ..representations.representations import create_cnt_encoding
 from .Sequence import Sequence
 from pathlib import Path
 import numpy as np

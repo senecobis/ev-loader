@@ -8,7 +8,7 @@ from tqdm import tqdm
 import os.path as osp
 from torchvision.io import read_image
 
-from ev_loader.utils.representations import EventToStack_Numpy
+from ev_loader.representations.representations import EventToStack_Numpy
 from ev_loader.utils.disparity_to_depth import disparity_to_points3D
 from ev_loader.utils.utils_quaternions import (
     translation_and_quaternion_to_pose, 
