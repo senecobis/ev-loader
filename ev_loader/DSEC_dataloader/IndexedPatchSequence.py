@@ -24,22 +24,22 @@ class IndexedPatchSequence(Sequence):
         self.patch_w = self.width // n_patches_w
         self.rep_subsample_factor = rep_subsample_factor
         self.patch_h5_path = self.sequence_path / "events_patchified.h5"
-
-        self.events = self.event_slicers["left"].events
         
-        self.generate_sequence()
+        self.check_to_generate_sequence()
         
-        self.patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
-
+        patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
         self.patch_offsets = [] 
         for p_id in range(self.num_patches):
-            n_ev = self.patch_h5[f"patch_{p_id}/t"].shape[0]
+            if f"patch_{p_id}" not in patch_h5:
+                n_ev = 0
+            else:
+                n_ev = patch_h5[f"patch_{p_id}/t"].shape[0]
             
             num_slices_in_patch = n_ev // self.S
             
             for i in range(num_slices_in_patch):
                 self.patch_offsets.append((p_id, i * self.S))
-        
+        patch_h5.close()
         self.total_len = len(self.patch_offsets)
 
         self.to_timesurface = ToTimesurface(sensor_size=(self.patch_w, self.patch_h, 2), 
@@ -47,7 +47,9 @@ class IndexedPatchSequence(Sequence):
                                     tau=5e3, 
                                     decay="exp"
                                     )
-    def generate_sequence(self):
+        self.patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
+
+    def check_to_generate_sequence(self):
         should_generate = False
 
         if not self.patch_h5_path.exists():
@@ -84,6 +86,18 @@ class IndexedPatchSequence(Sequence):
                 self.patch_h5_path.unlink()
             self.generate_patchified_h5()
 
+    def normalise_coordinates(self, x, y, patch_id):
+        # col = patch index in horizontal direction, row = vertical
+        col = patch_id % self.n_w
+        row = patch_id // self.n_w
+
+        x_offset = col * self.patch_w
+        y_offset = row * self.patch_h
+
+        x_local = x - x_offset
+        y_local = y - y_offset
+        return x_local, y_local
+
     def get_time_surface(self, x, y, p, t):
         # 1. Cast and Clip to prevent "double free or corruption"
         # We must ensure 0 <= x < width and 0 <= y < height
@@ -91,7 +105,7 @@ class IndexedPatchSequence(Sequence):
         int_y = np.clip(y.astype(np.int32), 0, self.height - 1)
         int_p = np.clip(p.astype(np.int32), 0, 1) # Ensure polarity is 0 or 1
 
-        surface_ref_indices = np.array([len(t) - 1]) if len(t) > 0 else np.array([0])  # Use the last event as reference for the surface
+        surface_ref_indices = np.array([len(t) - 1]) if len(t) > 0 else np.array([0]) 
         events_dict = {
             'x': int_x,
             'y': int_y,
@@ -126,10 +140,11 @@ class IndexedPatchSequence(Sequence):
         print(f"Creating patchified events for {self.sequence_id}...")
 
         # 1. Load raw events
-        x = self.events['x'][:]
-        y = self.events['y'][:]
-        p = self.events['p'][:]
-        t = self.events['t'][:]
+        events_ = self.event_slicers["left"].events
+        x = events_['x'][:]
+        y = events_['y'][:]
+        p = events_['p'][:]
+        t = events_['t'][:]
         
         # 2. Assign patch IDs
         col = np.clip(x // self.patch_w, 0, self.n_w - 1).astype(np.int16)
@@ -171,13 +186,16 @@ class IndexedPatchSequence(Sequence):
         y = group['y'][local_start : local_start + self.S]
         p = group['p'][local_start : local_start + self.S]
         t = group['t'][local_start : local_start + self.S]
-        events_tensor =  torch.from_numpy(np.stack([x, y, p, t], axis=1).astype(np.float32))
 
-        if self.rep_subsample_factor > 0:        
-            rep = self.get_stacked_tsurface_representation(x=x, y=y, p=p, t=t)
+        x_local, y_local = self.normalise_coordinates(x, y, patch_id)        
+        if self.rep_subsample_factor > 0:
+            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t)
         else:
-            rep = self.get_time_surface(x=x, y=y, p=p, t=t) # (1, C, H, W)
+            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t) # (1, C, H, W)
 
+        events_tensor =  torch.from_numpy(
+            np.stack([x_local, y_local, p, t], axis=1).astype(np.float32)
+            )  # (S, 4)
         data = Data(
             x=events_tensor,
             sequence_id=self.sequence_id, 
@@ -262,18 +280,18 @@ def main():
     for res in results:
         print(res)
 
-if __name__ == '__main__':
-    main()
-
-
 # if __name__ == '__main__':
+#     main()
 
-#     seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+if __name__ == '__main__':
 
-#     seq = IndexedPatchSequence(seq_path=seq_dir,
-#         num_events=100000,
-#         n_patches_h=16,
-#         n_patches_w=16,
-#         rep_subsample_factor=10000
-#         )
-#     item_ = seq[0] # Accessing an item to ensure everything works
+    seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+
+    seq = IndexedPatchSequence(seq_path=seq_dir,
+        num_events=100000,
+        n_patches_h=16,
+        n_patches_w=16,
+        rep_subsample_factor=10000
+        )
+    for item_ in seq:
+        print(item_)
