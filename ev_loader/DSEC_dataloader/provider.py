@@ -147,6 +147,19 @@ class DatasetProvider:
                                             rep_subsample_factor=rep_subsample_factor
                                             ))
         return torch.utils.data.ConcatDataset(train_sequences)
+    
+    def get_time_surface_test_dataset(self, num_events: int):
+        assert self.test_path.is_dir(), str(self.test_path)
+        test_sequences = list()
+        for child in sorted(self.test_path.iterdir()):
+            test_sequences.append(TimeSurfaceSequence(seq_path=child, 
+                                            mode='test', 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            num_events=num_events,
+                                            rep_subsample_factor=-1
+                                            ))
+        return test_sequences
 
 if __name__ == "__main__":
     dsec_dir = "/data/scratch/pellerito/datasets/DSEC"

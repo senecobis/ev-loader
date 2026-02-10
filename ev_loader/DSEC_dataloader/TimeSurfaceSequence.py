@@ -30,7 +30,7 @@ class TimeSurfaceSequence(Sequence):
         int_y = np.clip(y.astype(np.int32), 0, self.height - 1)
         int_p = np.clip(p.astype(np.int32), 0, 1) # Ensure polarity is 0 or 1
 
-        surface_ref_indices = np.array([len(t) - 1])
+        surface_ref_indices = np.array([len(t) - 1]) if len(t) > 0 else np.array([0])  # Use the last event as reference for the surface
         events_dict = {
             'x': int_x,
             'y': int_y,
@@ -69,13 +69,13 @@ class TimeSurfaceSequence(Sequence):
         y = self.events['y'][id_start:id_end]
         p = self.events['p'][id_start:id_end]
         t = self.events['t'][id_start:id_end]
-
+        
         x_rect, y_rect = self.get_rectified_events(x, y)
         if self.rep_subsample_factor > 0:        
             rep = self.get_stacked_tsurface_representation(x=x_rect, y=y_rect, p=p, t=t)
         else:
             rep = self.get_time_surface(x=x_rect, y=y_rect, p=p, t=t) # (1, C, H, W)
-
+            
         events = np.stack([x_rect, y_rect, p, t], axis=1)
         events_tensor = torch.from_numpy(events).float()
 
