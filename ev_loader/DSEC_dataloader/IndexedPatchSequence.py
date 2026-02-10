@@ -4,8 +4,6 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
-from torch_geometric.utils import to_dense_batch
 
 from .Sequence import Sequence
 from ..representations.time_surface import ToTimesurface
@@ -266,3 +264,16 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# if __name__ == '__main__':
+
+#     seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+
+#     seq = IndexedPatchSequence(seq_path=seq_dir,
+#         num_events=100000,
+#         n_patches_h=16,
+#         n_patches_w=16,
+#         rep_subsample_factor=10000
+#         )
+#     item_ = seq[0] # Accessing an item to ensure everything works
