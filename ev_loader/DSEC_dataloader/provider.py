@@ -10,6 +10,7 @@ from .SemanticSequence import SemanticSequence
 from .RawSequence import RawSequence
 from .ByEvIdxSequence import ByEvIdxSequence
 from .TimeSurfaceSequence import TimeSurfaceSequence
+from .IndexedPatchSequence import IndexedPatchSequence
 class DatasetProvider:
     def __init__(self, dataset_path: Path, delta_t_ms: int=50, num_bins=15, representation: str = ''):
         dataset_path = Path(dataset_path)
@@ -160,6 +161,26 @@ class DatasetProvider:
                                             rep_subsample_factor=-1
                                             ))
         return test_sequences
+    
+    def get_patchified_train_dataset(self, 
+                                     num_events: int, 
+                                     n_patches_h: int, 
+                                     n_patches_w: int, 
+                                     rep_subsample_factor: int
+                                     ):
+        assert self.train_path.is_dir(), str(self.train_path)
+        train_sequences = list()
+        for child in sorted(self.train_path.iterdir()):
+            train_sequences.append(IndexedPatchSequence(seq_path=child, 
+                                            mode='train', 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            num_events=num_events,
+                                            n_patches_h=n_patches_h,
+                                            n_patches_w=n_patches_w,
+                                            rep_subsample_factor=rep_subsample_factor
+                                            ))
+        return torch.utils.data.ConcatDataset(train_sequences)
 
 if __name__ == "__main__":
     dsec_dir = "/data/scratch/pellerito/datasets/DSEC"
