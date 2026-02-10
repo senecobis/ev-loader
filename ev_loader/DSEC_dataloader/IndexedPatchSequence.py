@@ -29,16 +29,7 @@ class IndexedPatchSequence(Sequence):
 
         self.events = self.event_slicers["left"].events
         
-        if not self.patch_h5_path.exists():
-            self.generate_patchified_h5()
-        else:
-            self.patch_ev = h5py.File(str(self.patch_h5_path), 'r')
-            n_h = self.patch_ev.attrs['n_patches_h']
-            n_w = self.patch_ev.attrs['n_patches_w']
-            self.patch_ev.close()
-            if n_h != self.n_h or n_w != self.n_w:
-                print(f"Warning: Existing patchified H5 has different patch grid ({n_h}x{n_w}) than requested ({self.n_h}x{self.n_w}). Regenerating...")
-                self.generate_patchified_h5()
+        self.generate_sequence()
         
         self.patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
 
@@ -58,7 +49,43 @@ class IndexedPatchSequence(Sequence):
                                     tau=5e3, 
                                     decay="exp"
                                     )
-        
+    def generate_sequence(self):
+        should_generate = False
+
+        if not self.patch_h5_path.exists():
+            should_generate = True
+        else:
+            try:
+                # Open in read-only to check contents
+                patch_ev = h5py.File(str(self.patch_h5_path), 'r')
+                
+                # 1. Check if required attributes exist
+                if 'n_patches_h' not in patch_ev.attrs or 'n_patches_w' not in patch_ev.attrs:
+                    print(f"Corrupted patchified H5 detected (missing attributes). Regenerating...")
+                    should_generate = True
+                else:
+                    n_h = patch_ev.attrs['n_patches_h']
+                    n_w = patch_ev.attrs['n_patches_w']
+                    
+                    # 2. Check if the grid matches current configuration
+                    if n_h != self.n_h or n_w != self.n_w:
+                        print(f"Grid mismatch ({n_h}x{n_w} vs {self.n_h}x{self.n_w}). Regenerating...")
+                        should_generate = True
+                
+                # Always close before potential regeneration
+                patch_ev.close()
+                
+            except (OSError, RuntimeError) as e:
+                # This catches 'bad object header', 'file signature not found', etc.
+                print(f"Cannot open {self.patch_h5_path.name} (likely corrupted): {e}")
+                should_generate = True
+
+        if should_generate:
+            # If the file exists but is bad/wrong, remove it first to avoid 'w' mode issues
+            if self.patch_h5_path.exists():
+                self.patch_h5_path.unlink()
+            self.generate_patchified_h5()
+
     def get_time_surface(self, x, y, p, t):
         # 1. Cast and Clip to prevent "double free or corruption"
         # We must ensure 0 <= x < width and 0 <= y < height
@@ -160,15 +187,82 @@ class IndexedPatchSequence(Sequence):
         )
         return data
 
-if __name__ == '__main__':
+# --- Below is a utility script to generate patchified H5 files for all sequences in parallel ---
+"""
+Below is a utility script to generate patchified H5 files for all sequences in parallel 
+Run as follows:
+python -m ev_loader.DSEC_dataloader.IndexedPatchSequence
+"""
+from concurrent.futures import ProcessPoolExecutor
+import functools
+
+def process_single_sequence(seq_dir, n_h, n_w, s, rep_factor):
+    """
+    Worker function to initialize the sequence and trigger H5 generation.
+    """
+    try:
+        print(f"--- Starting: {seq_dir.name} ---")
+        # Initializing triggers generate_patchified_h5 if it doesn't exist
+        seq = IndexedPatchSequence(
+            seq_path=seq_dir, 
+            num_events=s, 
+            n_patches_h=n_h, 
+            n_patches_w=n_w,
+            rep_subsample_factor=rep_factor
+        )
+        
+        # Accessing the first item ensures the H5 file is readable and offsets are correct
+        _ = seq[0]
+        
+        # Explicitly close the file handle to prevent locks during parallel runs
+        if hasattr(seq, 'patch_h5'):
+            seq.patch_h5.close()
+            
+        print(f"--- Completed: {seq_dir.name} ---")
+        return f"{seq_dir.name}: Success"
+    except Exception as e:
+        print(f"--- Error in {seq_dir.name}: {e} ---")
+        return f"{seq_dir.name}: Failed"
+
+def main():
     dataset_path = Path("/users/rpellerito/scratch/datasets/DSEC/train")
-    for seq_dir in dataset_path.iterdir():
-        if seq_dir.is_dir():
-            seq = IndexedPatchSequence(seq_path=seq_dir, 
-                                       num_events=100000, 
-                                       n_patches_h=16, 
-                                       n_patches_w=16,
-                                       rep_subsample_factor=10000
-                                       )
-            # Just initializing the sequence will generate the metadata if it doesn't exist
-            item_ = seq[0]  # Accessing an item to ensure everything works
+    
+    # Parameters
+    params = {
+        'n_h': 16,
+        'n_w': 16,
+        's': 100000,
+        'rep_factor': 10000
+    }
+
+    # Gather all sequence directories
+    seq_dirs = [d for d in dataset_path.iterdir() if d.is_dir()]
+    
+    # Determine number of workers. 
+    # Warning: Each worker loads the whole sequence events into RAM.
+    # DSEC sequences can be large (~5-10GB each). 
+    # If you have 128GB RAM, you can probably use 8-10 workers safely.
+    # max_workers = min(len(seq_dirs), 40) # Adjust based on your RAM
+    max_workers = min(len(seq_dirs), 12) # Adjust based on your RAM
+
+
+    print(f"Starting parallel patchification with {max_workers} workers...")
+
+    # Use a partial function to pass our constant parameters
+    worker_func = functools.partial(
+        process_single_sequence, 
+        n_h=params['n_h'], 
+        n_w=params['n_w'], 
+        s=params['s'], 
+        rep_factor=params['rep_factor']
+    )
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(worker_func, seq_dirs))
+
+    print("\nSummary of results:")
+    for res in results:
+        print(res)
+
+if __name__ == '__main__':
+    main()
