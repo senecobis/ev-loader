@@ -214,7 +214,8 @@ class IndexedPatchSequence(Sequence):
             )  # (S, 4)
         data = Data(
             x=events_tensor,
-            sequence_id=self.sequence_id, 
+            sequence_id=self.sequence_id,
+            patch_id=patch_id, 
             event_representation=rep 
         )
 
