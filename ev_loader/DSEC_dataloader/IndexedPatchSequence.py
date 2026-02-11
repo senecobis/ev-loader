@@ -26,21 +26,7 @@ class IndexedPatchSequence(Sequence):
         self.patch_h5_path = self.sequence_path / "events_patchified.h5"
         
         self.check_to_generate_sequence()
-        
-        patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
-        self.patch_offsets = [] 
-        for p_id in range(self.num_patches):
-            if f"patch_{p_id}" not in patch_h5:
-                n_ev = 0
-            else:
-                n_ev = patch_h5[f"patch_{p_id}/t"].shape[0]
-            
-            num_slices_in_patch = n_ev // self.S
-            
-            for i in range(num_slices_in_patch):
-                self.patch_offsets.append((p_id, i * self.S))
-        patch_h5.close()
-        self.total_len = len(self.patch_offsets)
+        self.calculate_total_len()
 
         self.to_timesurface = ToTimesurface(sensor_size=(self.patch_w, self.patch_h, 2), 
                                     surface_dimensions=None, 
@@ -97,12 +83,16 @@ class IndexedPatchSequence(Sequence):
         x_local = x - x_offset
         y_local = y - y_offset
         return x_local, y_local
+    
+    def normalise_timestamps(self, t):
+        t_normalized = t - t[0]
+        return t_normalized
 
     def get_time_surface(self, x, y, p, t):
         # 1. Cast and Clip to prevent "double free or corruption"
         # We must ensure 0 <= x < width and 0 <= y < height
-        int_x = np.clip(x.astype(np.int32), 0, self.width - 1)
-        int_y = np.clip(y.astype(np.int32), 0, self.height - 1)
+        int_x = np.clip(x.astype(np.int32), 0, self.patch_w - 1)
+        int_y = np.clip(y.astype(np.int32), 0, self.patch_h - 1)
         int_p = np.clip(p.astype(np.int32), 0, 1) # Ensure polarity is 0 or 1
 
         surface_ref_indices = np.array([len(t) - 1]) if len(t) > 0 else np.array([0]) 
@@ -128,6 +118,22 @@ class IndexedPatchSequence(Sequence):
                                        )   # (1, C, H, W)
             sequence.append(ts)
         return torch.cat(sequence, dim=0)  # (seq_len, C, H, W)
+
+    def calculate_total_len(self):
+        patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
+        self.patch_offsets = [] 
+        for p_id in range(self.num_patches):
+            if f"patch_{p_id}" not in patch_h5:
+                n_ev = 0
+            else:
+                n_ev = patch_h5[f"patch_{p_id}/t"].shape[0]
+            
+            num_slices_in_patch = n_ev // self.S
+            
+            for i in range(num_slices_in_patch):
+                self.patch_offsets.append((p_id, i * self.S))
+        patch_h5.close()
+        self.total_len = len(self.patch_offsets)
 
     def __len__(self):
         return self.total_len
@@ -187,14 +193,16 @@ class IndexedPatchSequence(Sequence):
         p = group['p'][local_start : local_start + self.S]
         t = group['t'][local_start : local_start + self.S]
 
-        x_local, y_local = self.normalise_coordinates(x, y, patch_id)        
+        t_norm = self.normalise_timestamps(t)
+        x_local, y_local = self.normalise_coordinates(x, y, patch_id) 
+
         if self.rep_subsample_factor > 0:
-            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t)
+            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t_norm)
         else:
-            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t) # (1, C, H, W)
+            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t_norm) # (1, C, H, W)
 
         events_tensor =  torch.from_numpy(
-            np.stack([x_local, y_local, p, t], axis=1).astype(np.float32)
+            np.stack([x_local, y_local, p, t_norm], axis=1).astype(np.float32)
             )  # (S, 4)
         data = Data(
             x=events_tensor,
