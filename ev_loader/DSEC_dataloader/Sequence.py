@@ -67,6 +67,7 @@ class Sequence(Dataset):
         self.stack = EventToStack_Numpy(num_bins=self.num_bins, height=self.height, width=self.width)
 
         # Save delta timestamp in ms
+        self.delta_t_ms = delta_t_ms
         self.delta_t_us = delta_t_ms * 1000
 
         # load disparity timestamps

@@ -30,7 +30,7 @@ class IndexedPatchSequence(Sequence):
 
         self.to_timesurface = ToTimesurface(sensor_size=(self.patch_w, self.patch_h, 2), 
                                     surface_dimensions=None, 
-                                    tau=5e3, 
+                                    tau=self.delta_t_ms, # metric time
                                     decay="exp"
                                     )
         self.patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
@@ -85,8 +85,10 @@ class IndexedPatchSequence(Sequence):
         return x_local, y_local
     
     def normalise_timestamps(self, t):
-        t_normalized = t - t[0]
-        return t_normalized
+        t_norm = t - t[0]
+        if t_norm[-1] > 0:
+            t_norm = t_norm / t_norm[-1]
+        return t_norm
 
     def get_time_surface(self, x, y, p, t):
         # 1. Cast and Clip to prevent "double free or corruption"
@@ -201,10 +203,11 @@ class IndexedPatchSequence(Sequence):
         t_norm = self.normalise_timestamps(t)
         x_local, y_local = self.normalise_coordinates(x, y, patch_id) 
 
+        # Use the original t for the time surface to have metric values
         if self.rep_subsample_factor > 0:
-            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t_norm)
+            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t)
         else:
-            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t_norm) # (1, C, H, W)
+            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t) # (1, C, H, W)
 
         events_tensor =  torch.from_numpy(
             np.stack([x_local, y_local, p, t_norm], axis=1).astype(np.float32)
