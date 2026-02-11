@@ -193,6 +193,11 @@ class IndexedPatchSequence(Sequence):
         p = group['p'][local_start : local_start + self.S]
         t = group['t'][local_start : local_start + self.S]
 
+        dataset_len = group['t'].shape[0]
+        if local_start + self.S > dataset_len:
+            # TODO Handle edge case: skip, pad, or error
+            raise ValueError(f"Index {index} requests data out of bounds for patch {patch_id}")
+
         t_norm = self.normalise_timestamps(t)
         x_local, y_local = self.normalise_coordinates(x, y, patch_id) 
 
@@ -209,6 +214,8 @@ class IndexedPatchSequence(Sequence):
             sequence_id=self.sequence_id, 
             event_representation=rep 
         )
+
+
         return data
 
 # --- Below is a utility script to generate patchified H5 files for all sequences in parallel ---
