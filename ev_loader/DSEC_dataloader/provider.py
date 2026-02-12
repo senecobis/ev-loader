@@ -181,6 +181,25 @@ class DatasetProvider:
                                             rep_subsample_factor=rep_subsample_factor
                                             ))
         return torch.utils.data.ConcatDataset(train_sequences)
+    
+    def get_patchified_test_dataset(self, 
+                                     num_events: int, 
+                                     n_patches_h: int, 
+                                     n_patches_w: int 
+                                     ):
+        assert self.test_path.is_dir(), str(self.test_path)
+        test_sequences = list()
+        for child in sorted(self.test_path.iterdir()):
+            test_sequences.append(IndexedPatchSequence(seq_path=child, 
+                                            mode='test', 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            num_events=num_events,
+                                            n_patches_h=n_patches_h,
+                                            n_patches_w=n_patches_w,
+                                            rep_subsample_factor=-1
+                                            ))
+        return test_sequences
 
 if __name__ == "__main__":
     dsec_dir = "/data/scratch/pellerito/datasets/DSEC"
