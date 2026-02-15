@@ -264,8 +264,8 @@ def main():
     
     # Parameters
     params = {
-        'n_h': 16,
-        'n_w': 16,
+        'n_h': 4,
+        'n_w': 4,
         's': 100000,
         'rep_factor': 10000
     }
@@ -299,18 +299,18 @@ def main():
     for res in results:
         print(res)
 
-# if __name__ == '__main__':
-#     main()
-
 if __name__ == '__main__':
+    main()
 
-    seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+# if __name__ == '__main__':
 
-    seq = IndexedPatchSequence(seq_path=seq_dir,
-        num_events=100000,
-        n_patches_h=16,
-        n_patches_w=16,
-        rep_subsample_factor=10000
-        )
-    for item_ in seq:
-        print(item_)
+#     seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+
+#     seq = IndexedPatchSequence(seq_path=seq_dir,
+#         num_events=100000,
+#         n_patches_h=16,
+#         n_patches_w=16,
+#         rep_subsample_factor=10000
+#         )
+#     for item_ in seq:
+#         print(item_)
