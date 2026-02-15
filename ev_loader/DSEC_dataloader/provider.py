@@ -203,15 +203,17 @@ class DatasetProvider:
                                             ))
         return test_sequences
     
-    def get_raw_semantic_train_dataset(self):
+    def get_raw_semantic_train_dataset(self, class_format='19'):
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
-            train_sequences.append(RawSemanticSequence(seq_path=child, 
+            train_sequences.append(RawSemanticSequence(
+                                            seq_path=child, 
                                             mode='train', 
                                             delta_t_ms=self.delta_t_ms, 
                                             num_bins=self.num_bins, 
                                             representation=self.representation,
+                                            class_format=class_format
                                             ))
         return torch.utils.data.ConcatDataset(train_sequences)
 
