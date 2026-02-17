@@ -203,7 +203,7 @@ class DatasetProvider:
                                             ))
         return test_sequences
     
-    def get_raw_semantic_train_dataset(self, class_format='19'):
+    def get_raw_semantic_train_dataset(self, class_format='19', max_num_events=None):
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
@@ -213,8 +213,11 @@ class DatasetProvider:
                                             delta_t_ms=self.delta_t_ms, 
                                             num_bins=self.num_bins, 
                                             representation=self.representation,
-                                            class_format=class_format
+                                            class_format=class_format,
+                                            max_num_events=max_num_events
                                             ))
+            if not train_sequences[-1].semantics_exists:
+                train_sequences.pop()
         return torch.utils.data.ConcatDataset(train_sequences)
 
 if __name__ == "__main__":

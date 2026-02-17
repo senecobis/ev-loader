@@ -20,16 +20,18 @@ class RawSemanticSequence(Sequence):
     Supports both 11-class and 19-class formats and converts to COCO format for evaluation.
     """
 
-    def __init__(self, *args, class_format='19', **kwargs):
+    def __init__(self, class_format='19', max_num_events=None, *args, **kwargs):
         """
         Args:
             class_format (str): Which class format to use ('11' or '19')
+            max_num_events (int): Maximum number of events to consider for each sequence
             *args, **kwargs: Arguments for the base Sequence class.
         """
         super().__init__(*args, **kwargs)
         self.labels = []
+        self.max_num_events = max_num_events
         
-        self.class_format = class_format
+        self.class_format = str(class_format)
         assert self.class_format in ['11', '19'], "class_format must be '11' or '19'"
         
         semantic_11_classes_dir = Path(self.sequence_path) / '11classes'
@@ -40,7 +42,7 @@ class RawSemanticSequence(Sequence):
         # Check which formats are available
         self.has_11classes = semantic_11_classes_dir.exists()
         self.has_19classes = semantic_19_classes_dir.exists()
-        print(f"Sequence {self.sequence_path}: 11-class format available: {self.has_11classes}, 19-class format available: {self.has_19classes}")
+        # print(f"Sequence {self.sequence_path}: 11-class format available: {self.has_11classes}, 19-class format available: {self.has_19classes}")
         
         if self.has_11classes and self.class_format == '11':
             self.semantics_exists = True
@@ -54,7 +56,6 @@ class RawSemanticSequence(Sequence):
             self.labels = labels_19
         elif self.has_11classes and not self.has_19classes and self.class_format == '19':
             # Fallback to 11 classes if 19 not available
-            print(f"Warning: 19-class format requested but not available for {self.sequence_path}. Using 11-class format.")
             self.semantics_exists = True
             self.semantic_label_dir = str(semantic_11_classes_dir)
             self.semantic_label_paths = sorted([str(p) for p in semantic_11_classes_dir.glob('*.png')])
@@ -62,7 +63,6 @@ class RawSemanticSequence(Sequence):
             self.class_format = '11'
         elif self.has_19classes and not self.has_11classes and self.class_format == '11':
             # Fallback to 19 classes if 11 not available
-            print(f"Warning: 11-class format requested but not available for {self.sequence_path}. Using 19-class format.")
             self.semantics_exists = True
             self.semantic_label_dir = str(semantic_19_classes_dir)
             self.semantic_label_paths = sorted([str(p) for p in semantic_19_classes_dir.glob('*.png')])
@@ -194,12 +194,14 @@ class RawSemanticSequence(Sequence):
         semantic_img = self.load_semantic_image(semantic_path)
 
         # Convert to tensor
-        semantic_tensor = torch.from_numpy(semantic_img).long()
+        semantic_tensor = torch.from_numpy(semantic_img).long().unsqueeze(0)  # Add batch dimension
                 
         image_id = self.file_index(index)
         coco_annotations = self.create_coco_annotations(semantic_img, image_id)
         
         events = np.stack([x_rect, y_rect, p, t], axis=1)
+        if self.max_num_events is not None:
+            events = events[:self.max_num_events]
         events_tensor = torch.from_numpy(events).float()
 
         data = Data(
@@ -209,14 +211,13 @@ class RawSemanticSequence(Sequence):
             coco_annotations=coco_annotations
         )
 
-    
         return data
     
 if __name__ == "__main__":
     from evlicious import Events
 
     # Use the specific sequence path provided by the user
-    sequence_path = Path("/users/rpellerito/scratch/datasets/DSEC/test/zurich_city_14_c")
+    sequence_path = Path("/users/rpellerito/scratch/datasets/DSEC/train/zurich_city_00_a")
 
     seq = RawSemanticSequence(sequence_path, class_format='19', delta_t_ms=100)
     for data in seq:
