@@ -40,6 +40,7 @@ class RawSemanticSequence(Sequence):
         # Check which formats are available
         self.has_11classes = semantic_11_classes_dir.exists()
         self.has_19classes = semantic_19_classes_dir.exists()
+        print(f"Sequence {self.sequence_path}: 11-class format available: {self.has_11classes}, 19-class format available: {self.has_19classes}")
         
         if self.has_11classes and self.class_format == '11':
             self.semantics_exists = True
