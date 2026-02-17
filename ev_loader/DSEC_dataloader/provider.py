@@ -219,6 +219,23 @@ class DatasetProvider:
             if not train_sequences[-1].semantics_exists:
                 train_sequences.pop()
         return torch.utils.data.ConcatDataset(train_sequences)
+    
+    def get_raw_semantic_test_dataset(self, class_format='19', max_num_events=None):
+        assert self.test_path.is_dir(), str(self.test_path)
+        test_sequences = list()
+        for child in sorted(self.test_path.iterdir()):
+            test_sequences.append(RawSemanticSequence(
+                                            seq_path=child, 
+                                            mode='test', 
+                                            delta_t_ms=self.delta_t_ms, 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            class_format=class_format,
+                                            max_num_events=max_num_events
+                                            ))
+            if not test_sequences[-1].semantics_exists:
+                test_sequences.pop()
+        return test_sequences
 
 if __name__ == "__main__":
     dsec_dir = "/data/scratch/pellerito/datasets/DSEC"
