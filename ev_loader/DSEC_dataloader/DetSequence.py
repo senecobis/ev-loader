@@ -15,7 +15,33 @@ class DetSequence(Sequence):
     def __init__(self, num_events: int = 0, **kwargs):
         super().__init__(**kwargs)
         self.num_events = num_events  # Number of events per sample
+        self.max_n_objects = 20
         self.tracks_loader = TracksLoader(self.sequence_path, sync="back", timestamps_images=self.timestamps)
+    
+    def tracks2tensor(self, raw_tracks):
+        # Convert tracks to a tensor format with fixed len
+        tracks_tensor = torch.zeros((self.max_n_objects, 5), dtype=torch.float32) # 5 columns: [class_id, cx, cy, w, h]
+        
+        num_objects = len(raw_tracks)
+        if num_objects > 0:
+            for i, track in enumerate(raw_tracks[:self.max_n_objects]):
+                x_tl = track[1]
+                y_tl = track[2]
+                h = track[3]
+                w = track[4]
+                class_id = track[5]
+                tracks_tensor[i] = torch.tensor(
+                    [x_tl, y_tl, w, h, class_id], 
+                    dtype=torch.float32
+                    )
+        return tracks_tensor
+    
+    @staticmethod
+    def top_left_to_center(tracks_tensor):
+        # Convert from top-left to center format
+        tracks_tensor[:, 0] += tracks_tensor[:, 3] / 2  # cx = x + w/2
+        tracks_tensor[:, 1] += tracks_tensor[:, 2] / 2  # cy = y + h/2
+        return tracks_tensor
     
     def __getitem__(self, index):
         ts_end = self.timestamps[index]
@@ -32,11 +58,14 @@ class DetSequence(Sequence):
         
         # Dsec detections
         tracks = self.tracks_loader[index]
+        tracks_tensor = self.tracks2tensor(tracks)
+        tracks_tensor = self.top_left_to_center(tracks_tensor)
 
         data = Data(
             x=events_tensor,
             sequence_id=self.sequence_id, 
-            tracks=tracks
+            tracks=tracks_tensor,
+            num_actual_objects=len(tracks)
         )
         return data
 
