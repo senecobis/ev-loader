@@ -44,3 +44,4 @@ baseline/EV_IMO/results/*
 baseline/OMS/results/*
 
 *.png
+detection_/
