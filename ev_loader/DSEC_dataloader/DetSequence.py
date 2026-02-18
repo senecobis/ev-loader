@@ -25,13 +25,13 @@ class DetSequence(Sequence):
         num_objects = len(raw_tracks)
         if num_objects > 0:
             for i, track in enumerate(raw_tracks[:self.max_n_objects]):
+                class_id = track[5]
                 x_tl = track[1]
                 y_tl = track[2]
-                h = track[3]
                 w = track[4]
-                class_id = track[5]
+                h = track[3]
                 tracks_tensor[i] = torch.tensor(
-                    [x_tl, y_tl, w, h, class_id], 
+                    [class_id, x_tl, y_tl, w, h], 
                     dtype=torch.float32
                     )
         return tracks_tensor
@@ -39,8 +39,8 @@ class DetSequence(Sequence):
     @staticmethod
     def top_left_to_center(tracks_tensor):
         # Convert from top-left to center format
-        tracks_tensor[:, 0] += tracks_tensor[:, 3] / 2  # cx = x + w/2
-        tracks_tensor[:, 1] += tracks_tensor[:, 2] / 2  # cy = y + h/2
+        tracks_tensor[:, 1] += tracks_tensor[:, 3] / 2  # cx = x + w/2
+        tracks_tensor[:, 2] += tracks_tensor[:, 4] / 2  # cy = y + h/2
         return tracks_tensor
     
     def __getitem__(self, index):
