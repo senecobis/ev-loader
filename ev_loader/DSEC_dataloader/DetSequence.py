@@ -12,7 +12,7 @@ from torch_geometric.utils import to_dense_batch
 from .detection.directory import TracksLoader
 
 class DetSequence(Sequence):
-    def __init__(self, num_events: int = <, **kwargs):
+    def __init__(self, num_events: int = 0, **kwargs):
         super().__init__(**kwargs)
         self.num_events = num_events  # Number of events per sample
         self.tracks_loader = TracksLoader(self.sequence_path, sync="back", timestamps_images=self.timestamps)
@@ -21,6 +21,12 @@ class DetSequence(Sequence):
         ts_end = self.timestamps[index]
         ts_start = ts_end - self.delta_t_us
         x_rect, y_rect, p, t = self.get_rectified_events_start_end_time(ts_start, ts_end)
+        if self.num_events > 0:
+            #only load the most recent num_events events
+            x_rect = x_rect[-self.num_events:]
+            y_rect = y_rect[-self.num_events:]
+            p = p[-self.num_events:]
+            t = t[-self.num_events:]
         events = np.stack([x_rect, y_rect, p, t], axis=1)
         events_tensor = torch.from_numpy(events).float()
         

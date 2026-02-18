@@ -1,4 +1,3 @@
-import time
 import torch
 from pathlib import Path
 from .Sequence import Sequence
@@ -12,6 +11,7 @@ from .ByEvIdxSequence import ByEvIdxSequence
 from .TimeSurfaceSequence import TimeSurfaceSequence
 from .IndexedPatchSequence import IndexedPatchSequence
 from .RawSemanticSequence import RawSemanticSequence
+from .DetSequence import DetSequence
 
 class DatasetProvider:
     def __init__(self, dataset_path: Path, delta_t_ms: int=50, num_bins=15, representation: str = ''):
@@ -237,10 +237,22 @@ class DatasetProvider:
                 test_sequences.pop()
         return test_sequences
 
+    def get_detection_train_dataset(self, num_events: int):
+        assert self.train_path.is_dir(), str(self.train_path)
+        train_sequences = list()
+        for child in sorted(self.train_path.iterdir()):
+            train_sequences.append(DetSequence(seq_path=child, 
+                                            mode='train', 
+                                            num_bins=self.num_bins, 
+                                            representation=self.representation,
+                                            num_events=num_events,
+                                            ))
+        return torch.utils.data.ConcatDataset(train_sequences)
+    
 if __name__ == "__main__":
     dsec_dir = "/data/scratch/pellerito/datasets/DSEC"
     num_bins = 15
     dataset_provider = DatasetProvider(dsec_dir, num_bins=num_bins, representation="stack")
-    test_dataset = dataset_provider.get_high_freq_hydra_train_dataset()
+    test_dataset = dataset_provider.get_detection_train_dataset(num_events=50000, rep_subsample_factor=1)
     for i, seq in enumerate(test_dataset):
         print(f"Sequence {i}: {seq}")
