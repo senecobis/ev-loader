@@ -69,15 +69,18 @@ class Sequence(Dataset):
         # Save delta timestamp in ms
         self.delta_t_ms = delta_t_ms
         self.delta_t_us = delta_t_ms * 1000
-
-        # load disparity timestamps
-        disp_dir = seq_path / 'disparity'
-        assert disp_dir.is_dir()
-        self.timestamps = np.loadtxt(disp_dir / 'timestamps.txt', dtype='int64')
+        
+        # load image timestamps 
+        img_dir = seq_path / 'images'
+        self.timestamps = np.loadtxt(img_dir / 'timestamps.txt', dtype='int64')
 
         # load events disparity paths
+        disp_dir = seq_path / 'disparity'
+        assert disp_dir.is_dir()
         ev_disp_dir = disp_dir / 'event'
-        self.disp_gt_pathstrings = self.import_image_like_paths(ev_disp_dir)
+        disp_gt_pathstrings = self.import_image_like_paths(ev_disp_dir)
+        # Duplicate to match the image number
+        self.disp_gt_pathstrings = [p for p in disp_gt_pathstrings for _ in range(2)][:-1]
         # Check if the number of disparity maps and timestamps match
         assert len(self.disp_gt_pathstrings) == self.timestamps.size
 
@@ -95,6 +98,8 @@ class Sequence(Dataset):
         # Load dynamic objects masks
         self.dyn_mask_path = seq_path / "mask/event_mask"
         self.dyn_masks_pathstrings = self.import_image_like_paths(self.dyn_mask_path)
+        # Duplicate dynamic masks to match the image number
+        self.dyn_masks_pathstrings = [p for p in self.dyn_masks_pathstrings for _ in range(2)][:-1]
         # Check if the number of dynamic masks and disparity GTs match
         if not len(self.dyn_masks_pathstrings) == len(self.disp_gt_pathstrings):
             raise ValueError("Number of dynamic masks and disparity GTs do not match for {}".format(seq_path))
@@ -131,9 +136,7 @@ class Sequence(Dataset):
 
         # get images from DSEC dataset
         self.frames_path = seq_path / 'images/left/rectified'
-        self.frames_pathstrings_original = self.import_image_like_paths(self.frames_path)
-        # TODO load all images, for now we subselect to have the same number of images as GT
-        self.frames_pathstrings = self.frames_pathstrings_original[::2]
+        self.frames_pathstrings = self.import_image_like_paths(self.frames_path)
         # Remove the first image as we do not have events before the first data-point
         self.frames_pathstrings.pop(0)
         if len(self.disp_gt_pathstrings) != len(self.frames_pathstrings):
