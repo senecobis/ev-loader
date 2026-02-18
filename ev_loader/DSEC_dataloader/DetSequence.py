@@ -47,12 +47,13 @@ class DetSequence(Sequence):
         ts_end = self.timestamps[index]
         ts_start = ts_end - self.delta_t_us
         x_rect, y_rect, p, t = self.get_rectified_events_start_end_time(ts_start, ts_end)
-        if self.num_events > 0:
-            #only load the most recent num_events events
-            x_rect = x_rect[-self.num_events:]
-            y_rect = y_rect[-self.num_events:]
-            p = p[-self.num_events:]
-            t = t[-self.num_events:]
+        len_event_stream = len(x_rect)
+        if self.num_events > 0 and len_event_stream > self.num_events:
+                #only load the most recent num_events events
+                x_rect = x_rect[-self.num_events:]
+                y_rect = y_rect[-self.num_events:]
+                p = p[-self.num_events:]
+                t = t[-self.num_events:]
         events = np.stack([x_rect, y_rect, p, t], axis=1)
         events_tensor = torch.from_numpy(events).float()
         
