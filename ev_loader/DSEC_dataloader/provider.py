@@ -237,7 +237,7 @@ class DatasetProvider:
                 test_sequences.pop()
         return test_sequences
 
-    def get_detection_train_dataset(self, num_events: int):
+    def get_detection_train_dataset(self, num_events: int = 0):
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):

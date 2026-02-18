@@ -76,13 +76,21 @@ class Sequence(Dataset):
 
         # load events disparity paths
         disp_dir = seq_path / 'disparity'
-        assert disp_dir.is_dir()
-        ev_disp_dir = disp_dir / 'event'
-        disp_gt_pathstrings = self.import_image_like_paths(ev_disp_dir)
-        # Duplicate to match the image number
-        self.disp_gt_pathstrings = [p for p in disp_gt_pathstrings for _ in range(2)][:-1]
-        # Check if the number of disparity maps and timestamps match
-        assert len(self.disp_gt_pathstrings) == self.timestamps.size
+        self.disp_gt_exists = disp_dir.is_dir()
+        if disp_dir.is_dir():
+            ev_disp_dir = disp_dir / 'event'
+            disp_gt_pathstrings = self.import_image_like_paths(ev_disp_dir)
+            # Duplicate to match the image number
+            self.disp_gt_pathstrings = [p for p in disp_gt_pathstrings for _ in range(2)][:-1]
+            # Check if the number of disparity maps and timestamps match
+            assert len(self.disp_gt_pathstrings) == self.timestamps.size
+            # Remove first disparity path and corresponding timestamp.
+            # This is necessary because we do not have events before the first disparity map.
+            assert int(Path(self.disp_gt_pathstrings[0]).stem) == 0
+            self.disp_gt_pathstrings.pop(0)
+        else:
+            # print(f"Disparity directory not found for {seq_path}")
+            pass
 
         # Assume disparity is at the same rate of every GT
         # Get the FPS of the GT suppose the timestamp are in us
@@ -97,23 +105,25 @@ class Sequence(Dataset):
 
         # Load dynamic objects masks
         self.dyn_mask_path = seq_path / "mask/event_mask"
-        self.dyn_masks_pathstrings = self.import_image_like_paths(self.dyn_mask_path)
-        # Duplicate dynamic masks to match the image number
-        self.dyn_masks_pathstrings = [p for p in self.dyn_masks_pathstrings for _ in range(2)][:-1]
-        # Check if the number of dynamic masks and disparity GTs match
-        if not len(self.dyn_masks_pathstrings) == len(self.disp_gt_pathstrings):
-            raise ValueError("Number of dynamic masks and disparity GTs do not match for {}".format(seq_path))
+        self.dyn_masks_exist = self.dyn_mask_path.is_dir()
+        if self.dyn_mask_path.is_dir():
+            self.dyn_masks_pathstrings = self.import_image_like_paths(self.dyn_mask_path)
+            # Duplicate dynamic masks to match the image number
+            self.dyn_masks_pathstrings = [p for p in self.dyn_masks_pathstrings for _ in range(2)][:-1]
+            # Remove the first event mask path.
+            # This is necessary because we do not have events before the first dynamic mask.
+            assert int(Path(self.dyn_masks_pathstrings[0]).stem) == 0
+            self.dyn_masks_pathstrings.pop(0)
+            # Check if the number of dynamic masks and disparity GTs match
+            if not len(self.dyn_masks_pathstrings) == len(self.disp_gt_pathstrings):
+                raise ValueError("Number of dynamic masks and disparity GTs do not match for {}".format(seq_path))
+        else:
+            # print(f"Dynamic mask directory not found for {seq_path}")
+            pass
 
-        # Remove first disparity path and corresponding timestamp.
-        # This is necessary because we do not have events before the first disparity map.
-        assert int(Path(self.disp_gt_pathstrings[0]).stem) == 0
-        self.disp_gt_pathstrings.pop(0)
+        # Remove first timestamp because we do not have events before the first.
+        # in accordance with the removed first disparity map and dynamic mask.
         self.timestamps = self.timestamps[1:]
-
-        # Remove the first event mask path.
-        # This is necessary because we do not have events before the first dynamic mask.
-        assert int(Path(self.dyn_masks_pathstrings[0]).stem) == 0
-        self.dyn_masks_pathstrings.pop(0)
 
         self.h5f = dict()
         self.rectify_ev_maps = dict()
@@ -139,8 +149,10 @@ class Sequence(Dataset):
         self.frames_pathstrings = self.import_image_like_paths(self.frames_path)
         # Remove the first image as we do not have events before the first data-point
         self.frames_pathstrings.pop(0)
-        if len(self.disp_gt_pathstrings) != len(self.frames_pathstrings):
-            raise ValueError("Number of disparity GTs and images do not match for {}".format(seq_path))
+        
+        if self.dyn_mask_path.is_dir():
+            if len(self.disp_gt_pathstrings) != len(self.frames_pathstrings):
+                raise ValueError("Number of disparity GTs and images do not match for {}".format(seq_path))
 
         # get optical flow from DSEC dataset
         self.optical_flow_path = seq_path / 'flow'
@@ -270,7 +282,7 @@ class Sequence(Dataset):
         return event_representation
     
     def __len__(self):
-        return len(self.disp_gt_pathstrings)
+        return len(self.timestamps)
     
     def disparity_gt(self, index):
         disp_gt_path = Path(self.disp_gt_pathstrings[index])

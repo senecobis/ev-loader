@@ -64,7 +64,7 @@ class DetSequence(Sequence):
         data = Data(
             x=events_tensor,
             sequence_id=self.sequence_id, 
-            tracks=tracks_tensor,
+            tracks=tracks_tensor.unsqueeze(0),  # Add batch dimension for tracks
             num_actual_objects=len(tracks)
         )
         return data
