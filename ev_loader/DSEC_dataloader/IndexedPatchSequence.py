@@ -1,3 +1,4 @@
+import os
 import h5py
 import torch
 import numpy as np
@@ -8,13 +9,16 @@ from torch_geometric.data import Data
 from .Sequence import Sequence
 from ..representations.time_surface import ToTimesurface
 
+from evlicious import Events
+import matplotlib.pyplot as plt
 
 class IndexedPatchSequence(Sequence):
     def __init__(self, 
                  n_patches_h=4, 
                  n_patches_w=4, 
                  num_events=10000, 
-                 rep_subsample_factor: int = 100, 
+                 rep_subsample_factor: int = 100,
+                 debug=False, 
                  **kwargs):
         super().__init__(**kwargs)
         self.S = num_events
@@ -23,17 +27,20 @@ class IndexedPatchSequence(Sequence):
         self.patch_h = self.height // n_patches_h
         self.patch_w = self.width // n_patches_w
         self.rep_subsample_factor = rep_subsample_factor
+        self.debug = debug
         self.patch_h5_path = self.sequence_path / "events_patchified.h5"
         
         self.check_to_generate_sequence()
         self.calculate_total_len()
 
+        # Use a reference timestamp of 1 for patches
         self.to_timesurface = ToTimesurface(sensor_size=(self.patch_w, self.patch_h, 2), 
                                     surface_dimensions=None, 
-                                    tau=self.delta_t_ms, # metric time
+                                    tau=1.0, # relative time
                                     decay="exp"
                                     )
         self.patch_h5 = h5py.File(str(self.patch_h5_path), 'r')
+
 
     def check_to_generate_sequence(self):
         should_generate = False
@@ -183,6 +190,24 @@ class IndexedPatchSequence(Sequence):
             f.attrs['n_patches_h'] = self.n_h
             f.attrs['n_patches_w'] = self.n_w
 
+    def visualise_patch(self, x, y, p, t):
+        t = t.astype(np.int64)
+        p = p.astype(np.int8)
+        ev = Events(x=x, y=y, p=p, t=t, width=self.patch_w, height=self.patch_h)
+        rendered = ev.render()
+        plt.imshow(rendered)
+        plt.title(f"Visualisation of patch events (N={len(ev)})")
+        os.makedirs("debug_viz", exist_ok=True)
+
+        plt.savefig(f"debug_viz/patch_viz_{self.sequence_id}.png")
+
+    def visualise_time_surface(self, rep):
+        rep = rep.squeeze(0).numpy()  # (C, H, W)
+        plt.imshow(rep[0], cmap='hot')  # Visualize the first channel of the time surface
+        plt.title(f"Time Surface of sequence {self.sequence_id}")
+        os.makedirs("debug_viz", exist_ok=True)
+        plt.savefig(f"debug_viz/ts_viz_{self.sequence_id}.png")
+
     def __getitem__(self, index):
         """
         Loads a single S-sized chunk using a contiguous index.
@@ -205,22 +230,19 @@ class IndexedPatchSequence(Sequence):
 
         # Use the original t for the time surface to have metric values
         if self.rep_subsample_factor > 0:
-            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t)
+            rep = self.get_stacked_tsurface_representation(x=x_local, y=y_local, p=p, t=t_norm)
         else:
-            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t) # (1, C, H, W)
+            rep = self.get_time_surface(x=x_local, y=y_local, p=p, t=t_norm) # (1, C, H, W)
 
         events_tensor =  torch.from_numpy(
             np.stack([x_local, y_local, p, t_norm], axis=1).astype(np.float32)
             )  # (S, 4)
-        data = Data(
+        return Data(
             x=events_tensor,
             sequence_id=self.sequence_id,
             patch_id=patch_id, 
             event_representation=rep 
         )
-
-
-        return data
 
 # --- Below is a utility script to generate patchified H5 files for all sequences in parallel ---
 """
@@ -299,18 +321,18 @@ def main():
     for res in results:
         print(res)
 
-if __name__ == '__main__':
-    main()
-
 # if __name__ == '__main__':
+#     main()
 
-#     seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+if __name__ == '__main__':
 
-#     seq = IndexedPatchSequence(seq_path=seq_dir,
-#         num_events=100000,
-#         n_patches_h=16,
-#         n_patches_w=16,
-#         rep_subsample_factor=10000
-#         )
-#     for item_ in seq:
-#         print(item_)
+    seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
+
+    seq = IndexedPatchSequence(seq_path=seq_dir,
+        num_events=100000,
+        n_patches_h=4,
+        n_patches_w=4,
+        rep_subsample_factor=0
+        )
+    for item_ in seq:
+        print(item_)
