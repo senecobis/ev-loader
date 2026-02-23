@@ -81,11 +81,6 @@ class RawSemanticSequence(Sequence):
 
         self.img_transf = TransformImageToEventRef(conf=self.intrinsics, height=1080, width=1440)
 
-        self.frames_pathstrings_original = self.frames_pathstrings_original[1:]  # Skip first frame as per base class behavior
-        timestamps = np.array(self.timestamps)
-        duplicated = np.repeat(timestamps, 2) # duplicate timestamps to align with frames
-        self.timestamps = duplicated
-
     def create_coco_categories(self):
         """
         Create COCO categories based on the selected class format.

@@ -43,7 +43,7 @@ class Sequence(Dataset):
                 load_opt_flow: bool=True
                 ):
         assert num_bins >= 1
-        assert delta_t_ms <= 100, 'adapt this code, if duration is higher than 100 ms'
+        assert delta_t_ms <= 50, 'adapt this code, if duration is higher than 100 ms'
         assert seq_path.is_dir()
         available_representations = ['voxel', 'tstamp_image', 'voxel_tstamp_image', 'raw', 'stack']
         assert representation in available_representations, f"Unkown representation from {available_representations}"
