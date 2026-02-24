@@ -286,8 +286,8 @@ def main():
     
     # Parameters
     params = {
-        'n_h': 4,
-        'n_w': 4,
+        'n_h': 16,
+        'n_w': 16,
         's': 100000,
         'rep_factor': 10000
     }
@@ -300,7 +300,7 @@ def main():
     # DSEC sequences can be large (~5-10GB each). 
     # If you have 128GB RAM, you can probably use 8-10 workers safely.
     # max_workers = min(len(seq_dirs), 40) # Adjust based on your RAM
-    max_workers = min(len(seq_dirs), 12) # Adjust based on your RAM
+    max_workers = min(len(seq_dirs), 16) # Adjust based on your RAM
 
 
     print(f"Starting parallel patchification with {max_workers} workers...")
@@ -330,8 +330,8 @@ if __name__ == '__main__':
 
     seq = IndexedPatchSequence(seq_path=seq_dir,
         num_events=100000,
-        n_patches_h=4,
-        n_patches_w=4,
+        n_patches_h=16,
+        n_patches_w=16,
         rep_subsample_factor=0
         )
     for item_ in seq:
