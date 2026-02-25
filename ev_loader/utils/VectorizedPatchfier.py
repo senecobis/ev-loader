@@ -27,7 +27,7 @@ class VectorizedPatchfier(nn.Module):
         self.register_buffer('patch_offsets_x', x_ids * self.patch_size_w)
         self.register_buffer('patch_offsets_y', y_ids * self.patch_size_h)
 
-    def forward(self, events, max_seq_len=128, to_local_coords=True):
+    def forward(self, events, max_seq_len=None, to_local_coords=True):
         """
         Args:
             events: (B, S, C) - Example: (1, 233491, 4)
@@ -38,14 +38,11 @@ class VectorizedPatchfier(nn.Module):
             out_events: (B, Num_Patches, max_seq_len, C)
             out_mask:   (B, Num_Patches, max_seq_len)
         """
-        # Shape is now (Batch, Sequence, Channel)
         B, S, C = events.shape
         device = events.device
         
         # 1. Flatten Batch and Sequence: (B*S, C)
         flat_events = events.reshape(-1, C)
-        
-        # We assume x is index 0 and y is index 1
         x_flat = flat_events[:, 0]
         y_flat = flat_events[:, 1]
         
@@ -73,9 +70,19 @@ class VectorizedPatchfier(nn.Module):
         repeated_starts = torch.repeat_interleave(starts, counts)
         
         ranks = torch.arange(sorted_group_ids.shape[0], device=device) - repeated_starts
+
+        if max_seq_len is None:
+            if counts.numel() > 0:
+                # Find the densest patch, but cap it at your max_seq_len safety limit
+                actual_max = counts.max().item()
+                dynamic_max_len = min(actual_max, 1e9)
+            else:
+                dynamic_max_len = 1 # Fallback if tensor is completely empty
+        else:
+            dynamic_max_len = max_seq_len
         
         # 6. Filter out ranks that exceed max_seq_len
-        valid_mask = ranks < max_seq_len
+        valid_mask = ranks < dynamic_max_len
         
         final_src_indices = sort_indices[valid_mask]
         final_group_ids = sorted_group_ids[valid_mask] 
@@ -84,12 +91,12 @@ class VectorizedPatchfier(nn.Module):
         # 7. Scatter into Output Tensor
         # Output shape: (B * P, MaxLen, C)
         out_events = torch.zeros(B * self.num_patches, 
-                                 max_seq_len, 
+                                 dynamic_max_len, 
                                  C, 
                                  device=device,
                                  dtype=events.dtype)
         
-        out_mask = torch.zeros(B * self.num_patches, max_seq_len, dtype=torch.bool, device=device)
+        out_mask = torch.zeros(B * self.num_patches, dynamic_max_len, dtype=torch.bool, device=device)
         
         # Retrieve valid events
         valid_events = flat_events[final_src_indices] # (Num_Valid, C)
@@ -104,7 +111,7 @@ class VectorizedPatchfier(nn.Module):
 
         # Scatter
         # Dest Index = Group_ID * Max_Len + Rank
-        dest_indices = final_group_ids * max_seq_len + final_ranks
+        dest_indices = final_group_ids * dynamic_max_len + final_ranks
         
         # Flatten the first two dims of output for scatter assignment
         # out_events view: (B*P*MaxLen, C)
@@ -112,8 +119,8 @@ class VectorizedPatchfier(nn.Module):
         out_mask.view(-1)[dest_indices] = True
         
         # 8. Final Reshape to (B, P, S, C)
-        out_events = out_events.view(B, self.num_patches, max_seq_len, C)
-        out_mask = out_mask.view(B, self.num_patches, max_seq_len)
+        out_events = out_events.view(B, self.num_patches, dynamic_max_len, C)
+        out_mask = out_mask.view(B, self.num_patches, dynamic_max_len)
         
         return out_events, out_mask
 

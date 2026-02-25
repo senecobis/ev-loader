@@ -12,10 +12,10 @@ from ..representations.time_surface import ToTimesurface
 from evlicious import Events
 import matplotlib.pyplot as plt
 
-class IndexedPatchSequence(Sequence):
+class PatchedSequence(Sequence):
     def __init__(self, 
-                 n_patches_h=4, 
-                 n_patches_w=4, 
+                 n_patches_h=16, 
+                 n_patches_w=16, 
                  num_events=10000, 
                  rep_subsample_factor: int = 100,
                  debug=False, 
@@ -260,7 +260,7 @@ def process_single_sequence(seq_dir, n_h, n_w, s, rep_factor):
     try:
         print(f"--- Starting: {seq_dir.name} ---")
         # Initializing triggers generate_patchified_h5 if it doesn't exist
-        seq = IndexedPatchSequence(
+        seq = PatchedSequence(
             seq_path=seq_dir, 
             num_events=s, 
             n_patches_h=n_h, 
@@ -328,7 +328,7 @@ if __name__ == '__main__':
 
     seq_dir = Path("/iopsstor/scratch/cscs/rpellerito/datasets/DSEC/train/thun_00_a")
 
-    seq = IndexedPatchSequence(seq_path=seq_dir,
+    seq = PatchedSequence(seq_path=seq_dir,
         num_events=100000,
         n_patches_h=16,
         n_patches_w=16,

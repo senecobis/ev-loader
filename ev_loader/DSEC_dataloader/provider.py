@@ -9,7 +9,7 @@ from .SemanticSequence import SemanticSequence
 from .RawSequence import RawSequence
 from .ByEvIdxSequence import ByEvIdxSequence
 from .TimeSurfaceSequence import TimeSurfaceSequence
-from .IndexedPatchSequence import IndexedPatchSequence
+from .PatchedSequence import PatchedSequence
 from .RawSemanticSequence import RawSemanticSequence
 from .DetSequence import DetSequence
 
@@ -173,7 +173,7 @@ class DatasetProvider:
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
-            train_sequences.append(IndexedPatchSequence(seq_path=child, 
+            train_sequences.append(PatchedSequence(seq_path=child, 
                                             mode='train', 
                                             num_bins=self.num_bins, 
                                             representation=self.representation,
@@ -192,7 +192,7 @@ class DatasetProvider:
         assert self.test_path.is_dir(), str(self.test_path)
         test_sequences = list()
         for child in sorted(self.test_path.iterdir()):
-            test_sequences.append(IndexedPatchSequence(seq_path=child, 
+            test_sequences.append(PatchedSequence(seq_path=child, 
                                             mode='test', 
                                             num_bins=self.num_bins, 
                                             representation=self.representation,
