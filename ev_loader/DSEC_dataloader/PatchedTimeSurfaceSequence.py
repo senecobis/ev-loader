@@ -147,9 +147,17 @@ class PatchedTimeSurfaceSequence(TimeSurfaceSequence):
             self.visualise_stitched_patches(patched_events, mask)
             self.visualise_time_surface(rep)
 
+        B, P, S, C = patched_events.shape
+        x_long = patched_events.reshape(-1, C)  # Shape: (P*S, 4)
+        mask_long = mask.reshape(-1)            # Shape: (P*S)
+        patch_ids = torch.arange(P, dtype=torch.long).repeat_interleave(S) # Shape: (P*S)
+
+        x_long = x_long[mask_long]  # Keep only valid events
+        patch_ids = patch_ids[mask_long]  # Corresponding patch IDs for valid events
+
         data = Data(
-            x=patched_events,
-            mask=mask,
+            x=x_long,
+            patch_ids=patch_ids,
             sequence_id=self.sequence_id, 
             event_representation=rep 
         )
