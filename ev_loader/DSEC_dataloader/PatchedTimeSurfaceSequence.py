@@ -5,8 +5,6 @@ from pathlib import Path
 from tqdm import tqdm
 from torch_geometric.data import Data
 
-from build.lib.ev_loader.representations.time_surface import ToTimesurface
-
 from .TimeSurfaceSequence import TimeSurfaceSequence
 from ..utils.VectorizedPatchfier import VectorizedPatchfier
 
