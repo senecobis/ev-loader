@@ -155,11 +155,15 @@ class PatchedTimeSurfaceSequence(TimeSurfaceSequence):
         x_long = x_long[mask_long]  # Keep only valid events
         patch_ids = patch_ids[mask_long]  # Corresponding patch IDs for valid events
 
+        counts = torch.bincount(patch_ids)
+        cu_seqlens = torch.zeros(counts.shape[0] + 1, device=x_long.device, dtype=torch.int32)
+        torch.cumsum(counts, dim=0, out=cu_seqlens[1:])
+
         data = Data(
-            x=x_long,
-            patch_ids=patch_ids,
+            x=x_long.unsqueeze(0),
             sequence_id=self.sequence_id, 
-            event_representation=rep 
+            event_representation=rep.unsqueeze(0),
+            cu_seqlens=cu_seqlens
         )
 
         return data
