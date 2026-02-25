@@ -2,7 +2,6 @@ import os
 import torch
 import numpy as np
 from pathlib import Path
-from tqdm import tqdm
 from torch_geometric.data import Data
 
 from .TimeSurfaceSequence import TimeSurfaceSequence
