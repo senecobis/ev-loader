@@ -162,7 +162,7 @@ class PatchedTimeSurfaceSequence(TimeSurfaceSequence):
         data = Data(
             x=x_long.unsqueeze(0),
             sequence_id=self.sequence_id, 
-            event_representation=rep.unsqueeze(0),
+            event_representation=rep,
             cu_seqlens=cu_seqlens
         )
 
