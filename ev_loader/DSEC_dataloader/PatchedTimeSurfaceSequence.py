@@ -158,6 +158,7 @@ class PatchedTimeSurfaceSequence(TimeSurfaceSequence):
         counts = torch.bincount(patch_ids)
         cu_seqlens = torch.zeros(counts.shape[0] + 1, device=x_long.device, dtype=torch.int32)
         torch.cumsum(counts, dim=0, out=cu_seqlens[1:])
+        cu_seqlens = torch.unique_consecutive(cu_seqlens)  # Remove duplicates to get correct sequence boundaries
 
         data = Data(
             x=x_long.unsqueeze(0),
