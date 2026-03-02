@@ -25,6 +25,7 @@ class EventDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.pin_memory = pin_memory
+        self.dims = img_shape
 
         self.train_dataset = None
         self.val_dataset = None
@@ -94,16 +95,8 @@ class EventDataModule(pl.LightningDataModule):
         if self.transform is not None:
             data = self.transform(data)
 
-        # Add a default edge attribute, if the data does not have them already.
-        if not hasattr(data, 'edge_attr') or data.edge_attr is None:
-            data = self._add_edge_attributes(data)
-
         # Checking the loaded data for the sake of assuring shape consistency.
-        assert data.pos.shape[0] == data.x.shape[0], "x and pos not matching in length"
-        assert data.pos.shape[-1] >= 2
-        assert data.x.shape[-1] == 1
-        assert data.edge_attr.shape[0] == data.edge_index.shape[1], "edges index and attribute not matching"
-        assert data.edge_attr.shape[-1] >= 2, "wrong edge attribute dimension"
+        assert data.x.shape[-1] == 4
         if hasattr(data, 'bbox'):
             assert len(data.bbox.shape) == 2 and data.bbox.shape[1] == 5
             assert len(data.y) == data.bbox.shape[0], "annotations not matching"

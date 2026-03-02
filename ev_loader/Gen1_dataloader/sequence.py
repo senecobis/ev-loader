@@ -115,9 +115,9 @@ class Gen1(EventDataModule):
         x = torch.from_numpy(buffer['x'].astype(np.float32))
         y = torch.from_numpy(buffer['y'].astype(np.float32))
         t = torch.from_numpy(buffer['t'].astype(np.float32))
-        p = torch.from_numpy(buffer['p'].astype(np.float32)).view(-1, 1)
-        pos = torch.stack([x, y, t], dim=1)
-        return Data(x=p, pos=pos, **kwargs)
+        p = torch.from_numpy(buffer['p'].astype(np.float32))
+        events = torch.stack([x, y, p, t,], dim=1)
+        return Data(x=events, **kwargs)
 
     def _load_processed_file(self, f_path: str) -> Data:
         with open(f_path, 'rb') as f:
@@ -132,7 +132,7 @@ class Gen1(EventDataModule):
         data = self._buffer_to_data(data, label=data_dict['label'], file_id=f_path)
         data.bbox = data_dict['bbox'][:, 1:6].long()  # (x, y, w, h, class_id)
         data.y = data.bbox[:, -1]
-        data.pos[:, 2] = normalize_time(data.pos[:, 2])  # time normalization
+        data.x[:, 3] = normalize_time(data.x[:, 3])  # time normalization
         return data
 
     #########################################################################################################

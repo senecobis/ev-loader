@@ -42,30 +42,24 @@ def test_gen1_dataloader():
     train_loader = data_module.train_dataloader()
     
     # Grab the very first batch
-    batch = next(iter(train_loader))
+    for batch in train_loader:
     
-    # 5. PRINT THE TENSOR SHAPES TO VERIFY
-    print("\n✅ SUCCESS! Batch loaded successfully. Here are the shapes:")
-    print("-" * 50)
-    print(f"Batch index map (batch.batch): {batch.batch.shape}")
-    print(f"Polarity / Features (batch.x): {batch.x.shape} -> Expected [Total_Events, 1]")
-    print(f"Coordinates/Time (batch.pos):  {batch.pos.shape} -> Expected [Total_Events, 3]")
-    
-    if hasattr(batch, 'bbox'):
-        print(f"Bounding Boxes (batch.bbox):   {batch.bbox.shape}")
-        print(f"Box Labels (batch.y):          {batch.y.shape}")
-        print(f"Batch Bbox map (batch_bbox):   {batch.batch_bbox.shape}")
+        # 5. PRINT THE TENSOR SHAPES TO VERIFY
+        print("\n✅ SUCCESS! Batch loaded successfully. Here are the shapes:")
+        print("-" * 50)
+        print(f"Batch index map (batch.batch): {batch.batch.shape}")
+        print(f"Polarity / Features (batch.x): {batch.x.shape} -> Expected [Total_Events, 4]")
         
-    if hasattr(batch, 'edge_index'):
-        print(f"Graph Edges (batch.edge_index):{batch.edge_index.shape}")
-        print(f"Edge Attrs (batch.edge_attr):  {batch.edge_attr.shape}")
-    print("-" * 50)
-    
-    # Optional: Look at the actual data of the first few events
-    print("\nFirst 5 events (x, y, t) in the batch:")
-    print(batch.pos[:5])
-    print("First 5 polarities:")
-    print(batch.x[:5])
+        if hasattr(batch, 'bbox'):
+            print(f"Bounding Boxes (batch.bbox):   {batch.bbox.shape}")
+            print(f"Box Labels (batch.y):          {batch.y.shape}")
+            print(f"Batch Bbox map (batch_bbox):   {batch.batch_bbox.shape}")
+            
+        print("-" * 50)
+        
+        # Optional: Look at the actual data of the first few events
+        print("\nFirst 5 events (x, y, p, t) in the batch:")
+        print(batch.x)
 
 if __name__ == "__main__":
     test_gen1_dataloader()
