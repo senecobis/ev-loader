@@ -11,7 +11,7 @@ from torch_geometric.data import Data
 from torch_geometric.transforms import Cartesian
 from typing import Callable, List, Optional, Tuple
 
-from aegnn.utils.bounding_box import crop_to_frame
+from .bounding_box import crop_to_frame
 from .event_ds import EventDataset
 
 
@@ -32,15 +32,15 @@ class EventDataModule(pl.LightningDataModule):
 
     def prepare_data(self) -> None:
         logging.info("Preparing datasets for loading")
-        self._prepare_dataset("training")
-        self._prepare_dataset("validation")
+        self._prepare_dataset("train")
+        self._prepare_dataset("val")
 
     def setup(self, stage: Optional[str] = None):
         logging.debug("Load and set up datasets")
-        self.train_dataset = self._load_dataset("training")
-        self.val_dataset = self._load_dataset("validation")
+        self.train_dataset = self._load_dataset("train")
+        self.val_dataset = self._load_dataset("val")
         if len(self.train_dataset) == 0 or len(self.val_dataset) == 0:
-            raise UserWarning("No data found, check AEGNN_DATA_DIR environment variable!")
+            raise UserWarning("No data found, check GEN1_DATA_DIR environment variable!")
 
     #########################################################################################################
     # Data Loaders ##########################################################################################
@@ -147,7 +147,7 @@ class EventDataModule(pl.LightningDataModule):
 
     @property
     def root(self) -> str:
-        return os.path.join(os.environ["AEGNN_DATA_DIR"], self.__class__.__name__.lower())
+        return os.path.join(os.environ["GEN1_DATA_DIR"], self.__class__.__name__.lower())
 
     @property
     def name(self) -> str:
@@ -164,4 +164,4 @@ class EventDataModule(pl.LightningDataModule):
     def __repr__(self):
         train_desc = self.train_dataset.__repr__()
         val_desc = self.val_dataset.__repr__()
-        return f"{self.__class__.__name__}[Train: {train_desc}\nValidation: {val_desc}]"
+        return f"{self.__class__.__name__}[Train: {train_desc}\nval: {val_desc}]"

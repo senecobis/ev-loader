@@ -11,9 +11,9 @@ from torch_geometric.nn.pool import radius_graph
 from tqdm import tqdm
 from typing import Callable, List, Optional
 
-from aegnn.utils.multiprocessing import TaskManager
-from .utils.normalization import normalize_time
-from .base.event_dm import EventDataModule
+from .multiprocessing import TaskManager
+from .utils import normalize_time
+from .event_dm import EventDataModule
 
 
 class Gen1(EventDataModule):
@@ -79,14 +79,7 @@ class Gen1(EventDataModule):
                 sample_idx = np.random.choice(np.arange(data.size), size=num_samples, replace=False)
             else:  # no sub-sampling -> first N events
                 sample_idx = np.arange(num_samples)
-            sample = buffer_to_data(data[sample_idx])
             sample_dict['sample_idx'] = sample_idx
-
-            # Graph generation (edges w.r.t. sub-sampled graph).
-            device = torch.device(torch.cuda.current_device())
-            sample.pos[:, 2] = normalize_time(sample.pos[:, 2])
-            edge_index = radius_graph(sample.pos.to(device), r=params["r"], max_num_neighbors=params["d_max"])
-            sample_dict['edge_index'] = edge_index.cpu()
 
             # Store resulting dictionary in file, however, the data only contains the data necessary
             # to re-create the graph, not the raw data itself.
@@ -140,7 +133,6 @@ class Gen1(EventDataModule):
         data.bbox = data_dict['bbox'][:, 1:6].long()  # (x, y, w, h, class_id)
         data.y = data.bbox[:, -1]
         data.pos[:, 2] = normalize_time(data.pos[:, 2])  # time normalization
-        data.edge_index = data_dict['edge_index']
         return data
 
     #########################################################################################################
@@ -480,3 +472,5 @@ def _stream_td_data(file_handle, buffer, dtype, ev_count=-1):
             buffer['p'][:count] = np.right_shift(np.bitwise_and(dat["_"], 268435456), 28)
         else:
             buffer[name][:count] = dat[name]
+            
+            
