@@ -1,12 +1,24 @@
 import os
 import torch
+from evlicious import Events
+import matplotlib.pyplot as plt
+import numpy as np
 
-# 1. SET THE ENVIRONMENT VARIABLE
-# Your code explicitly looks for os.environ["GEN1_DATA_DIR"].
-# Change this path to wherever your 'gen1' folder is located!
 os.environ["GEN1_DATA_DIR"] = "/users/rpellerito/scratch/datasets"
 
-from .sequence import Gen1 
+# from .sequence import Gen1
+from .PatchedSequence import PatchedGen1 
+
+def visualise_patch(x, y, p, t, width, height, sequence_id):
+    t = t.astype(np.int64)
+    p = p.astype(np.int8)
+    ev = Events(x=x, y=y, p=p, t=t, width=width, height=height)
+    rendered = ev.render()
+    plt.imshow(rendered)
+    plt.title(f"Visualisation of patch events (N={len(ev)})")
+    os.makedirs("debug_viz", exist_ok=True)
+
+    plt.savefig(f"debug_viz/patch_viz_{sequence_id}.png")
 
 def test_gen1_dataloader():
     print(f"Data Directory set to: {os.environ['GEN1_DATA_DIR']}")
@@ -15,11 +27,15 @@ def test_gen1_dataloader():
     # Tip: Set num_workers=0 for debugging. It forces the dataloader to run 
     # on the main thread, making error tracebacks much easier to read!
     print("Initializing Gen1 DataModule...")
-    data_module = Gen1(
-        batch_size=4, 
+    data_module = PatchedGen1(
+        batch_size=16, 
         shuffle=False, 
         num_workers=0, 
-        pin_memory=False
+        pin_memory=False,
+        num_events_per_sample=100000,
+        n_patches_h=16,
+        n_patches_w=16,
+        preprocess_again=True
     )
     
     # 3. RUN THE LIGHTNING LIFECYCLE

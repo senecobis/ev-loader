@@ -7,7 +7,6 @@ import sys
 import torch
 
 from torch_geometric.data import Data
-from torch_geometric.nn.pool import radius_graph
 from tqdm import tqdm
 from typing import Callable, List, Optional
 
@@ -18,14 +17,27 @@ from .event_dm import EventDataModule
 
 class Gen1(EventDataModule):
 
-    def __init__(self, batch_size: int = 64, shuffle: bool = True, num_workers: int = 8, pin_memory: bool = False,
-                 transform: Optional[Callable[[Data], Data]] = None):
+    def __init__(self, 
+                 batch_size: int = 64, 
+                 shuffle: bool = True, 
+                 num_workers: int = 8, 
+                 pin_memory: bool = False,
+                 transform: Optional[Callable[[Data], Data]] = None, 
+                 num_events_per_sample: int = 25000,
+                 preprocess_again: bool = False
+                 ):
         super(Gen1, self).__init__(img_shape=(304, 240), batch_size=batch_size, shuffle=shuffle,
                                    num_workers=num_workers, pin_memory=pin_memory, transform=transform)
-        pre_processing_params = {"r": 3.0, "d_max": 128, "n_samples": 25000, "sampling": True}
+        self.preprocess_again = preprocess_again
+        pre_processing_params = {"r": 3.0, "d_max": 128, "n_samples": num_events_per_sample, "sampling": True}
         self.save_hyperparameters({"preprocessing": pre_processing_params})
 
     def _prepare_dataset(self, mode: str):
+        processed_dir = os.path.join(self.root, "processed", mode)
+        if os.path.exists(processed_dir) and len(os.listdir(processed_dir)) > 0 and not self.preprocess_again:
+            logging.info(f"Processed data for {mode} already exists. Skipping preprocessing.")
+            return
+        
         raw_files = self.raw_files(mode)
         logging.debug(f"Found {len(raw_files)} raw files in dataset (mode = {mode})")
 
