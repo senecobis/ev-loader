@@ -28,9 +28,9 @@ def test_gen1_dataloader():
     # on the main thread, making error tracebacks much easier to read!
     print("Initializing Gen1 DataModule...")
     data_module = PatchedGen1(
-        batch_size=16, 
+        batch_size=32, 
         shuffle=False, 
-        num_workers=0, 
+        num_workers=32, 
         pin_memory=False,
         num_events_per_sample=100000,
         n_patches_h=16,
