@@ -11,9 +11,9 @@ import h5py
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-from ev_loader.DSEC_dataloader.Sequence import Sequence
-from ev_loader.representations.representations import VoxelGrid
-from ev_loader.utils.utils_events_split import split_events
+from evloader.DSEC_dataloader.Sequence import Sequence
+from evloader.representations.representations import VoxelGrid
+from evloader.utils.utils_events_split import split_events
 from ..utils.utils_augmentations import EventListAugmentor
 
 

@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(
-    name="ev_loader",
+    name="evloader",
     version="0.1.0",  # Update version as needed
     author="Roberto Pellerito",
     author_email="rpellerito@ifi.uzh.ch",

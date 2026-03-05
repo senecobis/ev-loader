@@ -1,7 +1,7 @@
 import cv2
 import torch
 import numpy as np
-from ev_loader.data import Events
+from evloader.data import Events
 from torchvision.transforms import GaussianBlur
 
 
