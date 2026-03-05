@@ -28,7 +28,7 @@ class TaskManager:
             else:
                 self._pool = multiprocessing.Pool(processes=num_workers)
             self._workers = threading.Semaphore(num_workers + queue_size)
-            self._outputs = []
+            # self._outputs = []
             self._index = 0
 
     def queue(self, function, *args, **kwargs):
@@ -40,7 +40,7 @@ class TaskManager:
 
             self._workers.acquire()
             res = self._pool.apply_async(function, args, kwargs, callback=self._done, error_callback=release_and_log)
-            self._outputs += [(self._index, res)]
+            # self._outputs += [(self._index, res)]
             self._index += 1
 
         # Single process processing, completely without the multiprocessing stuff.
@@ -66,4 +66,4 @@ class TaskManager:
     def __exit__(self, error_type, value, traceback):
         if self.multiprocessing:
             self.join()
-            self._outputs = [(i, r.get()) for i, r in self._outputs]
+            # self._outputs = [(i, r.get()) for i, r in self._outputs]

@@ -33,8 +33,8 @@ class EventDataModule(pl.LightningDataModule):
 
     def prepare_data(self) -> None:
         logging.info("Preparing datasets for loading")
-        self._prepare_dataset("train")
         self._prepare_dataset("val")
+        self._prepare_dataset("train")
 
     def setup(self, stage: Optional[str] = None):
         logging.debug("Load and set up datasets")
