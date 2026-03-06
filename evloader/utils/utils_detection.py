@@ -21,6 +21,14 @@ DSEC_COLORS = np.array(
     ],
     dtype=np.float32,
 )
+GEN1_CLASSES = ['car', 'pedestrian']
+GEN1_COLORS = np.array(
+    [
+        [0.121, 0.466, 0.705],
+        [1.000, 0.498, 0.054],
+    ],
+    dtype=np.float32,
+)
 
 
 def render_events_on_image(image, x, y, p, t):
@@ -50,7 +58,11 @@ def _draw_bbox_on_img(
     scale=1,
     linewidth=2,
     show_conf=True,
+    dataset="dsec", # "gen1" or "dsec"
 ):
+    CLASSES = GEN1_CLASSES if dataset == "gen1" else DSEC_CLASSES
+    COLORS = GEN1_COLORS if dataset == "gen1" else DSEC_COLORS
+    
     for i in range(len(x)):
         if scores is not None and scores[i] < conf:
             continue
@@ -60,20 +72,20 @@ def _draw_bbox_on_img(
         x1 = int(scale * (x[i] + w[i]))
         y1 = int(scale * (y[i] + h[i]))
         cls_id = int(labels[i])
-        if cls_id < 0 or cls_id >= len(DSEC_CLASSES):
+        if cls_id < 0 or cls_id >= len(CLASSES):
             cls_id = 0
 
-        color = (DSEC_COLORS[cls_id] * 255).astype(np.uint8).tolist()
-        text = f"{label}-{DSEC_CLASSES[cls_id]}"
+        color = (COLORS[cls_id] * 255).astype(np.uint8).tolist()
+        text = f"{label}-{CLASSES[cls_id]}"
         if scores is not None and show_conf:
             text += f":{scores[i] * 100:.1f}"
 
-        txt_color = (0, 0, 0) if np.mean(DSEC_COLORS[cls_id]) > 0.5 else (255, 255, 255)
+        txt_color = (0, 0, 0) if np.mean(COLORS[cls_id]) > 0.5 else (255, 255, 255)
         font = cv2.FONT_HERSHEY_SIMPLEX
         txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
 
         cv2.rectangle(img, (x0, y0), (x1, y1), color, linewidth)
-        txt_bk_color = (DSEC_COLORS[cls_id] * 255 * 0.7).astype(np.uint8).tolist()
+        txt_bk_color = (COLORS[cls_id] * 255 * 0.7).astype(np.uint8).tolist()
         txt_height = int(1.5 * txt_size[1])
         cv2.rectangle(
             img,

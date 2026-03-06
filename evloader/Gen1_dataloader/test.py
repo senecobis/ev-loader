@@ -85,7 +85,7 @@ def test_gen1_dataloader():
     # on the main thread, making error tracebacks much easier to read!
     print("Initializing Gen1 DataModule...")
     data_module = PatchedGen1(
-        batch_size=1, 
+        batch_size=2, 
         shuffle=False, 
         num_workers=32, 
         pin_memory=False,
@@ -135,12 +135,13 @@ def test_gen1_dataloader():
             img_h=data_module.dims[1], # 240
             sequence_id="batch_0_stitched"
         )
+        bbox_batch_mask = batch.batch_bbox==0
         tracks = {
             "class_id": batch.bbox[:, 0].numpy().astype(np.int32),  # class_id
-            "x": batch.bbox[:, 1].numpy(),  # x
-            "y": batch.bbox[:, 2].numpy(),  # y
-            "w": batch.bbox[:, 3].numpy(),  # w
-            "h": batch.bbox[:, 4].numpy()  # h
+            "x": batch.bbox[bbox_batch_mask, 1].numpy(),  # x
+            "y": batch.bbox[bbox_batch_mask, 2].numpy(),  # y
+            "w": batch.bbox[bbox_batch_mask, 3].numpy(),  # w
+            "h": batch.bbox[bbox_batch_mask, 4].numpy()  # h
         }
         gt_img = render_object_detections_on_image(
             stitched_image.copy(), tracks, label="gt", linewidth=2, show_conf=False
