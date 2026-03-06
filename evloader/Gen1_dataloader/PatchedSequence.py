@@ -22,7 +22,6 @@ from .sequence import Gen1, PSEELoader
 from ..utils.VectorizedPatchfier import VectorizedPatchfier
 
 
-
 class PatchedGen1(Gen1):
     def __init__(self, n_patches_h=16, n_patches_w=16, **kwargs):
         # Pass parameters to the original Gen1
