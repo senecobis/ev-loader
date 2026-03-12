@@ -10,6 +10,8 @@ os.environ["GEN1_DATA_DIR"] = "/users/rpellerito/scratch/datasets"
 from .PatchedSequence import PatchedGen1 
 from ..utils.utils_detection import render_object_detections_on_image
 
+DEBUG = True
+
 def visualise_patch(x, y, p, t, width, height, sequence_id):
     t = t.astype(np.int64)
     p = p.astype(np.int8)
@@ -84,15 +86,21 @@ def test_gen1_dataloader():
     # Tip: Set num_workers=0 for debugging. It forces the dataloader to run 
     # on the main thread, making error tracebacks much easier to read!
     print("Initializing Gen1 DataModule...")
+    if DEBUG:
+        print("⚠️ DEBUG MODE: Setting num_workers=0 for easier tracebacks.")
+        num_workers = 0
+    else:
+        num_workers = 64
+    
     data_module = PatchedGen1(
         batch_size=2, 
         shuffle=False, 
-        num_workers=32, 
+        num_workers=num_workers, 
         pin_memory=False,
         num_events_per_sample=100000,
-        n_patches_h=16,
-        n_patches_w=16,
-        preprocess_again=False
+        n_patches_h=60,
+        n_patches_w=72,
+        preprocess_again=True
     )
     
     # 3. RUN THE LIGHTNING LIFECYCLE

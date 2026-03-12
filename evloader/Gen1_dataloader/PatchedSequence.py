@@ -34,7 +34,7 @@ class PatchedGen1(Gen1):
             input_H=240,
             input_W=304,
             patch_grid_H=self.n_h,
-            patch_grid_W=self.n_w
+            patch_grid_W=self.n_w,
         )
     
     @property
@@ -81,7 +81,10 @@ class PatchedGen1(Gen1):
             ], axis=1)).float().unsqueeze(0) # (1, N, 4)
 
             # 2. Patchify (Reorders events by patch and makes coords local)
-            patched_events, mask = self.patchfier(ev_tensor, to_local_coords=True)
+            patched_events, mask = self.patchfier(ev_tensor, 
+                                                  to_local_coords=True, 
+                                                  max_seq_len=500 # to allow for batching
+                                                )
             
             # B=Batch, P=Patches, S=Max events per patch, C=Channels
             B, P, S, C = patched_events.shape
@@ -104,6 +107,8 @@ class PatchedGen1(Gen1):
             sample_dict['x_patched'] = x_long
             sample_dict['patch_ids'] = patch_ids
             sample_dict['cu_seqlens'] = cu_seqlens
+            sample_dict['patched_events'] = patched_events
+            sample_dict['mask'] = mask
             
             # Store resulting dictionary in file
             os.makedirs(os.path.dirname(processed_file), exist_ok=True)
@@ -125,7 +130,8 @@ class PatchedGen1(Gen1):
         
         # Construct the Data object using the keys we saved in _processing
         data = Data(
-            x=data_dict['x_patched'],
+            x=data_dict['patched_events'],
+            mask=data_dict['mask'],
             patch_ids=data_dict['patch_ids'],
             cu_seqlens=data_dict['cu_seqlens']
         )
@@ -139,44 +145,3 @@ class PatchedGen1(Gen1):
         data.x[:, 2] = normalize_time(data.x[:, 2])
         
         return data
-            
-
-    @staticmethod
-    def collate_fn(data_list: List[Data]) -> Batch:
-        # 1. Use the default PyG batching to concatenate everything into one "Long" graph
-        # This automatically creates batch.x, batch.batch, batch.ptr, etc.
-        batch = Batch.from_data_list(data_list)
-        
-        # 2. Convert the concatenated 'x' to a dense tensor (B, Max_S, C)
-        # x_dense: [Batch, Max_Events, 4]
-        # mask: [Batch, Max_Events] (True for real events, False for padding)
-        x_dense, mask = to_dense_batch(batch.x, batch.batch)
-        
-        # 3. Convert 'patch_ids' to dense as well
-        # Note: patch_ids are integers, so they will be padded with 0 by default. 
-        # If 0 is a valid patch ID, you might want to fill padding with -1 later.
-        patch_ids_dense, _ = to_dense_batch(batch.patch_ids, batch.batch, fill_value=-1)
-
-        # 4. Handle cu_seqlens
-        # Since n_patches is fixed, we can just stack them.
-        # cu_seqlens are already relative to the start of each sample (0), 
-        # so stacking them is correct for a dense batch.
-        cu_seqlens_dense = torch.stack([d.cu_seqlens for d in data_list], dim=0)
-
-        # Re-assign the dense versions to the batch object
-        batch.x = x_dense
-        batch.patch_ids = patch_ids_dense
-        batch.cu_seqlens = cu_seqlens_dense
-        batch.mask = mask # Standard name for padding masks
-
-        # Keep original bounding box batch mapping
-        if hasattr(data_list[0], 'bbox'):
-            batch_bbox = sum([[i] * len(data.y) for i, data in enumerate(data_list)], [])
-            batch.batch_bbox = torch.tensor(batch_bbox, dtype=torch.long)
-            
-        # the original bounding boxes have the format (x, y, w, h, class_id)
-        # transform it to (class_id, x, y, w, h) for YOLOX format, reshuffle the columns
-        batch.bbox = batch.bbox[:, [4, 0, 1, 2, 3]]
-        
-            
-        return batch
