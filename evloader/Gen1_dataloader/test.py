@@ -91,21 +91,23 @@ def test_gen1_dataloader():
         num_workers = 0
     else:
         num_workers = 64
+    preprocess_again = False
     
     data_module = PatchedGen1(
-        batch_size=2, 
+        batch_size=30, 
         shuffle=False, 
         num_workers=num_workers, 
         pin_memory=False,
         num_events_per_sample=100000,
         n_patches_h=60,
         n_patches_w=72,
-        preprocess_again=True
+        preprocess_again=preprocess_again
     )
     
     # 3. RUN THE LIGHTNING LIFECYCLE
     print("Running prepare_data() ... (This will process .dat to .pkl if needed)")
-    data_module.prepare_data()
+    if preprocess_again:
+        data_module.prepare_data()
     
     print("Running setup() ... (This builds the train/val dataset objects)")
     data_module.setup()
@@ -133,6 +135,10 @@ def test_gen1_dataloader():
         print(f"Cumulative Sequence Lengths (batch.cu_seqlens): {cu_seqlens.shape}")
         mask = batch.mask
         print(f"Padding Mask (batch.mask): {mask.shape}")
+        padded_bbox = batch.bbox_padded
+        print(f"Padded Bounding Boxes (batch.bbox_padded): {padded_bbox.shape}")
+        print(f"Original Bounding Boxes (batch.bbox): {batch.bbox.shape}")
+        print(f"Batch BBox Map (batch.batch_bbox): {batch.batch_bbox.shape}")
         
         stitched_image = visualise_stitched_patches(
             batch=batch,

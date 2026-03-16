@@ -13,6 +13,7 @@ import os
 import numpy as np
 import pickle
 import torch
+import torch_geometric
 from torch_geometric.data import Data, Batch
 from torch_geometric.utils import to_dense_batch
 from typing import List
@@ -23,7 +24,7 @@ from ..utils.VectorizedPatchfier import VectorizedPatchfier
 
 
 class PatchedGen1(Gen1):
-    def __init__(self, n_patches_h=16, n_patches_w=16, **kwargs):
+    def __init__(self, n_patches_h, n_patches_w, **kwargs):
         # Pass parameters to the original Gen1
         super().__init__(**kwargs)
         self.n_h = n_patches_h
@@ -63,6 +64,7 @@ class PatchedGen1(Gen1):
             t_end = t_bbox + 300000  # 300 ms
             bbox_mask = np.logical_and(t_start < bounding_boxes['ts'], bounding_boxes['ts'] < t_end)
 
+            # BBox format in file: [timestamp, x_tl, y_tl, w, h, class_id, confidence, track_id]
             sample_dict['bbox'] = torch.tensor(bounding_boxes[bbox_mask].tolist())
             sample_dict['label'] = labels[bbox_mask]
             sample_dict['raw_file'] = rf
@@ -88,14 +90,14 @@ class PatchedGen1(Gen1):
             
             # B=Batch, P=Patches, S=Max events per patch, C=Channels
             B, P, S, C = patched_events.shape
-            x_long = patched_events.reshape(-1, C)
+            x_dense_patched = patched_events.reshape(-1, C)
             mask_long = mask.reshape(-1)
             
             # Create patch IDs for every event index
             patch_ids = torch.arange(P).repeat_interleave(S)
 
             # 3. Filter only valid events (remove padding)
-            x_long = x_long[mask_long]
+            x_dense_patched = x_dense_patched[mask_long]
             patch_ids = patch_ids[mask_long]
 
             # 4. Calculate cu_seqlens
@@ -104,7 +106,7 @@ class PatchedGen1(Gen1):
             torch.cumsum(counts, dim=0, out=cu_seqlens[1:])
 
             # Save this to your pickle
-            sample_dict['x_patched'] = x_long
+            sample_dict['x_patched'] = x_dense_patched
             sample_dict['patch_ids'] = patch_ids
             sample_dict['cu_seqlens'] = cu_seqlens
             sample_dict['patched_events'] = patched_events
@@ -133,15 +135,36 @@ class PatchedGen1(Gen1):
             x=data_dict['patched_events'],
             mask=data_dict['mask'],
             patch_ids=data_dict['patch_ids'],
-            cu_seqlens=data_dict['cu_seqlens']
+            cu_seqlens=data_dict['cu_seqlens'],
+            bbox=data_dict['bbox'][:, 1:6].long(),
+            label=data_dict['label']
         )
         
         # Handle the annotations/labels
-        data.bbox = data_dict['bbox'][:, 1:6].long()
         data.y = data.bbox[:, -1]
-        data.label = data_dict['label']
         
+        # TODO correctly normalize time
         # Normalize time (assuming index 2 is time: x, y, t, p)
-        data.x[:, 2] = normalize_time(data.x[:, 2])
+        # data.x[:, 2] = normalize_time(data.x[:, 2])
         
         return data
+    
+    @staticmethod
+    def collate_fn(data_list: List[Data]) -> torch_geometric.data.Batch:
+        batch = torch_geometric.data.Batch.from_data_list(data_list)
+        if hasattr(data_list[0], 'bbox'):
+            batch_bbox = sum([[i] * len(data.y) for i, data in enumerate(data_list)], [])
+            batch.batch_bbox = torch.tensor(batch_bbox, dtype=torch.long)
+        
+        B = len(data_list)
+        max_num_obj = 10
+        det_padded = torch.zeros((B, max_num_obj, 5), dtype=torch.float32)
+        for i, data in enumerate(data_list):
+            num_obj = min(len(data.bbox), max_num_obj)
+            det_padded[i, :num_obj] = data.bbox[:num_obj]
+        
+        # bbox to YOLOX format [x_tl, y_tl, w, h, class_id] -> [class_id, x_tl, y_tl, w, h]
+        det_padded = det_padded[:, :, [4, 0, 1, 2, 3]]
+        batch.bbox_padded = det_padded
+        
+        return batch
