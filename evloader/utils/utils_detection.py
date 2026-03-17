@@ -219,7 +219,7 @@ def _decode_predictions(pred, conf_thr=0.25, nms_thr=0.6):
     return {"x": x, "y": y, "w": w, "h": h, "class_id": cls_ids, "score": scores}
 
 
-def _tracks_to_dict_tl_to_center(tracks_tensor, num_actual):
+def _tracks_to_dict(tracks_tensor, num_actual):
     if tracks_tensor.dim() == 3:
         tracks_tensor = tracks_tensor.squeeze(0)
     
@@ -247,36 +247,6 @@ def _tracks_to_dict_tl_to_center(tracks_tensor, num_actual):
     x = tracks[:, 1] - (w / 2.0)
     y = tracks[:, 2] - (h / 2.0)
     
-    cls = tracks[:, 0].astype(np.int32)
-    
-    return {"x": x, "y": y, "w": w, "h": h, "class_id": cls}
-
-
-def _tracks_to_dict(tracks_tensor, num_actual):
-    if tracks_tensor.dim() == 3:
-        tracks_tensor = tracks_tensor.squeeze(0)
-    
-    tracks = _to_numpy(tracks_tensor)[:num_actual]
-    if tracks.shape[0] == 0:
-        return {
-            "x": np.array([]),
-            "y": np.array([]),
-            "w": np.array([]),
-            "h": np.array([]),
-            "class_id": np.array([]),
-        }
-
-    # Format is [class_id, x_tl, y_tl, w, h]
-    # Index 0: class_id
-    # Index 1: x_tl
-    # Index 2: y_tl
-    # Index 3: w
-    # Index 4: h
-
-    w = tracks[:, 3]
-    h = tracks[:, 4]
-    x = tracks[:, 1]
-    y = tracks[:, 2] 
     cls = tracks[:, 0].astype(np.int32)
     
     return {"x": x, "y": y, "w": w, "h": h, "class_id": cls}
