@@ -14,8 +14,7 @@ import numpy as np
 import pickle
 import torch
 import torch_geometric
-from torch_geometric.data import Data, Batch
-from torch_geometric.utils import to_dense_batch
+from torch_geometric.data import Data
 from typing import List
 
 from .utils import normalize_time
@@ -116,7 +115,9 @@ class PatchedGen1(Gen1):
             os.makedirs(os.path.dirname(processed_file), exist_ok=True)
             with open(processed_file, 'wb') as f:
                 pickle.dump(sample_dict, f)
-            
+                
+    def _seq_name(self, f_path: str) -> str:
+        return os.path.basename(f_path).replace(".pkl", "")
             
     def _load_processed_file(self, f_path: str) -> Data:
         """ 
@@ -137,7 +138,8 @@ class PatchedGen1(Gen1):
             patch_ids=data_dict['patch_ids'],
             cu_seqlens=data_dict['cu_seqlens'],
             bbox=data_dict['bbox'][:, 1:6].long(),
-            label=data_dict['label']
+            label=data_dict['label'],
+            sequence_id=self._seq_name(f_path),
         )
         
         # Handle the annotations/labels
