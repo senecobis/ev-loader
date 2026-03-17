@@ -24,8 +24,8 @@ DSEC_COLORS = np.array(
 GEN1_CLASSES = ['car', 'pedestrian']
 GEN1_COLORS = np.array(
     [
+        [0.172, 0.627, 0.172],
         [0.121, 0.466, 0.705],
-        [1.000, 0.498, 0.054],
     ],
     dtype=np.float32,
 )
