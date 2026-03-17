@@ -48,7 +48,7 @@ class PatchedGen1(Gen1):
 
         for i, bbox in enumerate(bounding_boxes):
             processed_dir = os.path.join(root, "processed")
-            processed_file = rf.replace(root, processed_dir).replace(".dat", f"{i}.pkl")
+            processed_file = rf.replace(root, processed_dir).replace(".dat", f"{i:05d}.pkl")
             if os.path.exists(processed_file):
                 continue
 

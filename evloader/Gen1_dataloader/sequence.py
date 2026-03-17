@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import sys
 import torch
+import re
 
 from torch_geometric.data import Data
 from tqdm import tqdm
@@ -155,7 +156,9 @@ class Gen1(EventDataModule):
 
     def processed_files(self, mode: str) -> List[str]:
         processed_dir = os.path.join(self.root, "processed")
-        return glob.glob(os.path.join(processed_dir, mode, "*.pkl"))
+        files = glob.glob(os.path.join(processed_dir, mode, "*.pkl"))
+        files.sort(key=natural_sort_key)
+        return files
 
     def _total_bbox_count(self, raw_files: List[str]) -> int:
         num_bbox = 0
@@ -486,3 +489,6 @@ def _stream_td_data(file_handle, buffer, dtype, ev_count=-1):
             buffer[name][:count] = dat[name]
             
             
+def natural_sort_key(s):
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split('([0-9]+)', s)]

@@ -122,10 +122,12 @@ def test_gen1_dataloader():
 
     # 4. FETCH A BATCH AND INSPECT IT
     print("\nFetching a batch from the train_dataloader...")
-    train_loader = data_module.train_dataloader()
+    loader = data_module.train_dataloader()
+    # print("Fetching a batch from the val_dataloader...")
+    # loader = data_module.val_dataloader()
     
     # Grab the very first batch
-    for batch in train_loader:
+    for batch in loader:
         print("-" * 50)
         batched = batch.x
         print(f"Patched Event Tensor (batch.x_patched): {batched.shape}")
