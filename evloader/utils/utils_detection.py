@@ -172,6 +172,65 @@ def _nms_torch(boxes_xyxy, scores, iou_thr=0.6):
     return torch.tensor(keep, dtype=torch.long, device=boxes_xyxy.device)
 
 
+def _decode_predictions_tl(pred, conf_thr=0.25, nms_thr=0.6):
+    # 1. REMOVE BATCH DIMENSION HERE
+    # [1, N_anchors, 13] -> [N_anchors, 13]
+    if pred.dim() == 3:
+        pred = pred.squeeze(0)
+
+    if pred.numel() == 0:
+        return {
+            "x": np.array([]),
+            "y": np.array([]),
+            "w": np.array([]),
+            "h": np.array([]),
+            "class_id": np.array([]),
+            "score": np.array([]),
+        }
+
+    boxes_xywh = pred[:, :4]
+    obj_scores = pred[:, 4]
+    cls_scores, cls_ids = torch.max(pred[:, 5:], dim=1)
+    scores = obj_scores * cls_scores
+
+    keep = scores >= conf_thr
+    if keep.sum() == 0:
+        return {
+            "x": np.array([]),
+            "y": np.array([]),
+            "w": np.array([]),
+            "h": np.array([]),
+            "class_id": np.array([]),
+            "score": np.array([]),
+        }
+
+    boxes_xywh = boxes_xywh[keep]
+    cls_ids = cls_ids[keep]
+    scores = scores[keep]
+
+    # CHANGE 1: Use a Top-Left to XYXY conversion for NMS
+    # If _xywh_center_to_xyxy_torch was used before, replace it with:
+    # x2 = x1 + w, y2 = y1 + h
+    boxes_xyxy = torch.clone(boxes_xywh)
+    boxes_xyxy[:, 2] = boxes_xywh[:, 0] + boxes_xywh[:, 2] # x2 = x + w
+    boxes_xyxy[:, 3] = boxes_xywh[:, 1] + boxes_xywh[:, 3] # y2 = y + h
+    
+    keep_idx = _nms_torch(boxes_xyxy, scores, iou_thr=nms_thr)
+
+    boxes_xywh = _to_numpy(boxes_xywh[keep_idx])
+    cls_ids = _to_numpy(cls_ids[keep_idx]).astype(np.int32)
+    scores = _to_numpy(scores[keep_idx])
+
+    # CHANGE 2: Stop the final conversion. 
+    # Just extract them directly because they are already Top-Left.
+    x = boxes_xywh[:, 0]
+    y = boxes_xywh[:, 1]
+    w = boxes_xywh[:, 2]
+    h = boxes_xywh[:, 3]
+
+    return {"x": x, "y": y, "w": w, "h": h, "class_id": cls_ids, "score": scores}
+
+
 def _decode_predictions(pred, conf_thr=0.25, nms_thr=0.6):
     # 1. REMOVE BATCH DIMENSION HERE
     # [1, N_anchors, 13] -> [N_anchors, 13]
@@ -217,6 +276,24 @@ def _decode_predictions(pred, conf_thr=0.25, nms_thr=0.6):
     x, y, w, h = _xywh_center_to_topleft(boxes_xywh)
 
     return {"x": x, "y": y, "w": w, "h": h, "class_id": cls_ids, "score": scores}
+
+
+def _tracks_to_dict_tl(tracks_tensor, num_actual):
+    if tracks_tensor.dim() == 3:
+        tracks_tensor = tracks_tensor.squeeze(0)
+    
+    tracks = _to_numpy(tracks_tensor)[:num_actual]
+    if tracks.shape[0] == 0:
+        return {"x": np.array([]), "y": np.array([]), "w": np.array([]), "h": np.array([]), "class_id": np.array([])}
+
+    # Format is [class_id, x_tl, y_tl, w, h]
+    cls = tracks[:, 0].astype(np.int32)
+    x = tracks[:, 1]  # No longer subtracting w/2
+    y = tracks[:, 2]  # No longer subtracting h/2
+    w = tracks[:, 3]
+    h = tracks[:, 4]
+    
+    return {"x": x, "y": y, "w": w, "h": h, "class_id": cls}
 
 
 def _tracks_to_dict(tracks_tensor, num_actual):
