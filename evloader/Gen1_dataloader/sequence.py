@@ -11,7 +11,7 @@ from torch_geometric.data import Data
 from tqdm import tqdm
 from typing import Callable, List, Optional
 
-from .multiprocessing import TaskManager
+from .TaskManager import TaskManager
 from .utils import normalize_time
 from .event_dm import EventDataModule
 

@@ -1,9 +1,10 @@
 # from https://stackoverflow.com/questions/9601802/python-pool-apply-async-and-map-async-do-not-block-on-full-queue?rq=1
 import logging
 import multiprocessing
+import threading
+
 import torch
 import torch.multiprocessing
-import threading
 
 from typing import Callable, Optional
 
