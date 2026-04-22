@@ -242,24 +242,32 @@ class DatasetProvider:
         assert self.train_path.is_dir(), str(self.train_path)
         train_sequences = list()
         for child in sorted(self.train_path.iterdir()):
-            train_sequences.append(DetSequence(seq_path=child, 
-                                            mode='train', 
-                                            num_bins=self.num_bins, 
-                                            representation=self.representation,
-                                            num_events=num_events,
-                                            ))
+            print(f"Loading DSEC detection train sequence: {child}", flush=True)
+            try:
+                train_sequences.append(DetSequence(seq_path=child, 
+                                                mode='train', 
+                                                num_bins=self.num_bins, 
+                                                representation=self.representation,
+                                                num_events=num_events,
+                                                ))
+            except Exception as exc:
+                raise RuntimeError(f"Failed to load DSEC detection train sequence: {child}") from exc
         return torch.utils.data.ConcatDataset(train_sequences)
     
     def get_detection_test_dataset(self, num_events: int = 0):
         assert self.test_path.is_dir(), str(self.test_path)
         test_sequences = list()
         for child in sorted(self.test_path.iterdir()):
-            test_sequences.append(DetSequence(seq_path=child, 
-                                            mode='test', 
-                                            num_bins=self.num_bins, 
-                                            representation=self.representation,
-                                            num_events=num_events,
-                                            ))
+            print(f"Loading DSEC detection test sequence: {child}", flush=True)
+            try:
+                test_sequences.append(DetSequence(seq_path=child, 
+                                                mode='test', 
+                                                num_bins=self.num_bins, 
+                                                representation=self.representation,
+                                                num_events=num_events,
+                                                ))
+            except Exception as exc:
+                raise RuntimeError(f"Failed to load DSEC detection test sequence: {child}") from exc
         return test_sequences
     
     def get_patched_ts_test_dataset(self, num_events: int, n_patches_h: int, n_patches_w: int):

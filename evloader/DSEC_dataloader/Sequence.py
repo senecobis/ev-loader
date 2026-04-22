@@ -129,26 +129,59 @@ class Sequence(Dataset):
         self.rectify_ev_maps = dict()
         self.event_slicers = dict()
 
-        self.locations = ['left', 'right']
+        self.locations = []
         ev_dir = seq_path / 'events'
-        for location in self.locations:
+        for location in ['left', 'right']:
             ev_dir_location = ev_dir / location
             ev_data_file = ev_dir_location / 'events.h5'
             ev_rect_file = ev_dir_location / 'rectify_map.h5'
+
+            if not ev_data_file.is_file() or not ev_rect_file.is_file():
+                if location == 'left':
+                    missing_files = [
+                        str(path) for path in (ev_data_file, ev_rect_file)
+                        if not path.is_file()
+                    ]
+                    raise FileNotFoundError(
+                        "Missing required left event files for {}: {}".format(
+                            seq_path, missing_files
+                        )
+                    )
+                continue
 
             h5f_location = h5py.File(str(ev_data_file), 'r')
             self.h5f[location] = h5f_location
             self.event_slicers[location] = EventSlicer(h5f_location)
             with h5py.File(str(ev_rect_file), 'r') as h5_rect:
                 self.rectify_ev_maps[location] = h5_rect['rectify_map'][()]
+            self.locations.append(location)
+
+        self.has_right_events = 'right' in self.event_slicers
 
         self._finalizer = weakref.finalize(self, self.close_callback, self.h5f)
 
         # get images from DSEC dataset
         self.frames_path = seq_path / 'images/left/rectified'
         self.frames_pathstrings = self.import_image_like_paths(self.frames_path)
+        if len(self.frames_pathstrings) <= 1:
+            raise ValueError(
+                "DSEC sequence '{}' has {} left rectified image(s) in '{}'. "
+                "Need at least 2 because the loader drops the first image.".format(
+                    seq_path, len(self.frames_pathstrings), self.frames_path
+                )
+            )
         # Remove the first image as we do not have events before the first data-point
         self.frames_pathstrings.pop(0)
+        self.frames_pathstrings_by_location = {'left': self.frames_pathstrings}
+
+        right_frames_path = seq_path / 'images/right/rectified'
+        if right_frames_path.is_dir():
+            right_frames_pathstrings = self.import_image_like_paths(right_frames_path)
+            if len(right_frames_pathstrings) > 1:
+                right_frames_pathstrings.pop(0)
+                self.frames_pathstrings_by_location['right'] = right_frames_pathstrings
+        self.image_locations = list(self.frames_pathstrings_by_location.keys())
+        self.has_right_images = 'right' in self.frames_pathstrings_by_location
         
         if self.dyn_mask_path.is_dir():
             if len(self.disp_gt_pathstrings) != len(self.frames_pathstrings):
@@ -224,10 +257,18 @@ class Sequence(Dataset):
             h5f.close()
 
     def rectify_events(self, x: np.ndarray, y: np.ndarray, location: str):
-        assert location in self.locations
+        if location not in self.locations:
+            raise ValueError(
+                "Event location '{}' is not available for sequence '{}'. "
+                "Available locations: {}".format(
+                    location, self.sequence_id, self.locations
+                )
+            )
         # From distorted to undistorted
         rectify_map = self.rectify_ev_maps[location]
         assert rectify_map.shape == (self.height, self.width, 2), rectify_map.shape
+        if len(x) == 0:
+            return np.empty((0, 2), dtype=rectify_map.dtype)
         assert x.max() < self.width
         assert y.max() < self.height
         return rectify_map[y, x]
@@ -240,8 +281,15 @@ class Sequence(Dataset):
         depth[depth == np.inf] = np.nan 
         return depth
     
-    def get_events_start_end_time(self, ts_start, ts_end):
-        event_data = self.event_slicers["left"].get_events(ts_start, ts_end)
+    def get_events_start_end_time(self, ts_start, ts_end, location="left"):
+        if location not in self.event_slicers:
+            raise ValueError(
+                "Event location '{}' is not available for sequence '{}'. "
+                "Available locations: {}".format(
+                    location, self.sequence_id, self.locations
+                )
+            )
+        event_data = self.event_slicers[location].get_events(ts_start, ts_end)
 
         p = event_data['p']
         t = event_data['t']
@@ -249,18 +297,18 @@ class Sequence(Dataset):
         y = event_data['y']
         return x, y, p, t
     
-    def get_rectified_events(self, x: np.ndarray, y: np.ndarray):
-        xy_rect = self.rectify_events(x, y, location="left")
+    def get_rectified_events(self, x: np.ndarray, y: np.ndarray, location="left"):
+        xy_rect = self.rectify_events(x, y, location=location)
         x_rect = xy_rect[:, 0]
         y_rect = xy_rect[:, 1]
         return x_rect, y_rect
 
-    def get_rectified_events_start_end_time(self, ts_start, ts_end):
-        x,y,p,t = self.get_events_start_end_time(ts_start, ts_end)
+    def get_rectified_events_start_end_time(self, ts_start, ts_end, location="left"):
+        x,y,p,t = self.get_events_start_end_time(ts_start, ts_end, location=location)
 
         # TODO the rectification map introduce a checkerboard pattern in the events
         # This might be a problem for the network learning from event representation
-        x_rect, y_rect = self.get_rectified_events(x, y)
+        x_rect, y_rect = self.get_rectified_events(x, y, location=location)
         return x_rect, y_rect, p, t
     
     def get_event_representation(self, x, y, p, t):
@@ -298,8 +346,15 @@ class Sequence(Dataset):
         depth = self.disparities_to_depths(disparity=disparity, Q=self.Q)
         return torch.from_numpy(depth).float()
     
-    def frame_gt(self, index):
-        frame_path = self.frames_pathstrings[index]
+    def frame_gt(self, index, location="left"):
+        if location not in self.frames_pathstrings_by_location:
+            raise ValueError(
+                "Image location '{}' is not available for sequence '{}'. "
+                "Available locations: {}".format(
+                    location, self.sequence_id, self.image_locations
+                )
+            )
+        frame_path = self.frames_pathstrings_by_location[location][index]
         frame = self.get_frame(frame_path)
         return torch.from_numpy(frame).permute(2, 0, 1).float()
     

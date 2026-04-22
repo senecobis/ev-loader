@@ -16,7 +16,7 @@ else:
     from .PatchedSequence import PatchedGen1
     from ..utils.utils_detection import render_object_detections_on_image
 
-DEBUG = True
+DEBUG = False
 
 def visualise_patch(x, y, p, t, width, height, sequence_id):
     t = t.astype(np.int64)
@@ -186,4 +186,7 @@ def test_gen1_dataloader():
         print("-" * 50)
 
 if __name__ == "__main__":
-    test_gen1_dataloader()
+    try:
+        test_gen1_dataloader()
+    except KeyboardInterrupt:
+        print("\nInterrupted by user. Preprocessing workers were stopped.")

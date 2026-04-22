@@ -1,12 +1,17 @@
 # from https://stackoverflow.com/questions/9601802/python-pool-apply-async-and-map-async-do-not-block-on-full-queue?rq=1
 import logging
 import multiprocessing
+import signal
 import threading
 
 import torch
 import torch.multiprocessing
 
 from typing import Callable, Optional
+
+
+def _ignore_sigint():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 class TaskManager:
@@ -22,12 +27,14 @@ class TaskManager:
     def __init__(self, num_workers: int, queue_size: int, callback: Optional[Callable] = None):
         self.callback = callback
         self.multiprocessing = num_workers > 1
+        self._pool = None
 
         if self.multiprocessing:
+            pool_kwargs = {"processes": num_workers, "initializer": _ignore_sigint}
             if torch.cuda.is_initialized():
-                self._pool = torch.multiprocessing.Pool(processes=num_workers)
+                self._pool = torch.multiprocessing.Pool(**pool_kwargs)
             else:
-                self._pool = multiprocessing.Pool(processes=num_workers)
+                self._pool = multiprocessing.Pool(**pool_kwargs)
             self._workers = threading.Semaphore(num_workers + queue_size)
             # self._outputs = []
             self._index = 0
@@ -60,11 +67,20 @@ class TaskManager:
         return self
 
     def join(self):
-        if self.multiprocessing:
+        if self.multiprocessing and self._pool is not None:
             self._pool.close()
             self._pool.join()
+            self._pool = None
+
+    def terminate(self):
+        if self.multiprocessing and self._pool is not None:
+            self._pool.terminate()
+            self._pool.join()
+            self._pool = None
 
     def __exit__(self, error_type, value, traceback):
-        if self.multiprocessing:
+        if self.multiprocessing and error_type is None:
             self.join()
+        elif self.multiprocessing:
+            self.terminate()
             # self._outputs = [(i, r.get()) for i, r in self._outputs]

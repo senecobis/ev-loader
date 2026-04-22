@@ -84,7 +84,7 @@ class PatchedGen1(Gen1):
             # 2. Patchify (Reorders events by patch and makes coords local)
             patched_events, mask = self.patchfier(ev_tensor, 
                                                   to_local_coords=True, 
-                                                  max_seq_len=500 # to allow for batching
+                                                  max_seq_len=100 # to allow for batching
                                                 )
             
             # B=Batch, P=Patches, S=Max events per patch, C=Channels

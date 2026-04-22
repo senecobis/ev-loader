@@ -45,11 +45,21 @@ class Gen1(EventDataModule):
         total_bbox_count = self._total_bbox_count(raw_files)
         logging.debug(f"Total count of (filtered) bounding boxes = {total_bbox_count}")
 
+        if self.num_workers > 1:
+            tqdm.write(f"Preprocessing {mode} with multiprocessing ({self.num_workers} workers).")
+        else:
+            tqdm.write(f"Preprocessing {mode} in a single process.")
+
         task_manager = TaskManager(self.num_workers, queue_size=self.num_workers)
-        for rf in tqdm(raw_files):
-            task_manager.queue(self._processing, rf=rf, root=self.root, read_annotations=self._read_annotations,
-                               read_label=self._read_label, buffer_to_data=self._buffer_to_data)
-        task_manager.join()
+        try:
+            for rf in tqdm(raw_files):
+                task_manager.queue(self._processing, rf=rf, root=self.root, read_annotations=self._read_annotations,
+                                   read_label=self._read_label, buffer_to_data=self._buffer_to_data)
+            task_manager.join()
+        except KeyboardInterrupt:
+            tqdm.write("Interrupted by user; terminating preprocessing workers...")
+            task_manager.terminate()
+            raise
 
     def _processing(self, rf: str, root: str, read_annotations, read_label, buffer_to_data):
         data_loader = PSEELoader(rf)
