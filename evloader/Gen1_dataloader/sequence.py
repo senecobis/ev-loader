@@ -25,16 +25,27 @@ class Gen1(EventDataModule):
                  pin_memory: bool = False,
                  transform: Optional[Callable[[Data], Data]] = None, 
                  num_events_per_sample: int = 25000,
-                 preprocess_again: bool = False
+                 preprocess_again: bool = False,
+                 processed_dataset_path: Optional[str] = None,
                  ):
         super(Gen1, self).__init__(img_shape=(304, 240), batch_size=batch_size, shuffle=shuffle,
                                    num_workers=num_workers, pin_memory=pin_memory, transform=transform)
         self.preprocess_again = preprocess_again
+        self.processed_dataset_path = processed_dataset_path
         pre_processing_params = {"r": 3.0, "d_max": 128, "n_samples": num_events_per_sample, "sampling": True}
         self.save_hyperparameters({"preprocessing": pre_processing_params})
 
+    def _processed_root(self, root: Optional[str] = None) -> str:
+        if self.processed_dataset_path is not None:
+            processed_dir = os.path.expanduser(self.processed_dataset_path)
+            if os.path.isabs(processed_dir):
+                return processed_dir
+            return os.path.join(root or self.root, processed_dir)
+
+        return os.path.join(root or self.root, "processed")
+
     def _prepare_dataset(self, mode: str):
-        processed_dir = os.path.join(self.root, "processed", mode)
+        processed_dir = os.path.join(self._processed_root(), mode)
         if os.path.exists(processed_dir) and len(os.listdir(processed_dir)) > 0 and not self.preprocess_again:
             logging.info(f"Processed data for {mode} already exists. Skipping preprocessing.")
             return
@@ -68,7 +79,7 @@ class Gen1(EventDataModule):
         labels = np.array(read_label(bounding_boxes))
 
         for i, bbox in enumerate(bounding_boxes):
-            processed_dir = os.path.join(root, "processed")
+            processed_dir = self._processed_root(root)
             processed_file = rf.replace(root, processed_dir).replace(".dat", f"{i}.pkl")
             if os.path.exists(processed_file):
                 continue
@@ -165,7 +176,7 @@ class Gen1(EventDataModule):
         return glob.glob(os.path.join(self.root, mode, "*_td.dat"))
 
     def processed_files(self, mode: str) -> List[str]:
-        processed_dir = os.path.join(self.root, "processed")
+        processed_dir = self._processed_root()
         files = glob.glob(os.path.join(processed_dir, mode, "*.pkl"))
         files.sort(key=natural_sort_key)
         return files

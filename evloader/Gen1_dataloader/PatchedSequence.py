@@ -15,7 +15,7 @@ import pickle
 import torch
 import torch_geometric
 from torch_geometric.data import Data
-from typing import List
+from typing import List, Optional
 
 from .utils import normalize_time
 from .sequence import Gen1, PSEELoader
@@ -23,9 +23,18 @@ from ..utils.VectorizedPatchfier import VectorizedPatchfier
 
 
 class PatchedGen1(Gen1):
-    def __init__(self, n_patches_h, n_patches_w, **kwargs):
+    def __init__(
+        self,
+        n_patches_h: int,
+        n_patches_w: int,
+        processed_dataset_path: Optional[str] = None,
+        **kwargs,
+    ):
         # Pass parameters to the original Gen1
-        super().__init__(**kwargs)
+        super().__init__(
+            processed_dataset_path=processed_dataset_path,
+            **kwargs,
+        )
         self.n_h = n_patches_h
         self.n_w = n_patches_w
         
@@ -47,7 +56,7 @@ class PatchedGen1(Gen1):
         labels = np.array(read_label(bounding_boxes))
 
         for i, bbox in enumerate(bounding_boxes):
-            processed_dir = os.path.join(root, "processed")
+            processed_dir = self._processed_root(root)
             processed_file = rf.replace(root, processed_dir).replace(".dat", f"{i:05d}.pkl")
             if os.path.exists(processed_file):
                 continue

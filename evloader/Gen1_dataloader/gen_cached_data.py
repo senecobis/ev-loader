@@ -1,24 +1,92 @@
+import argparse
 import os
 import sys
 from pathlib import Path
 
-from evlicious import Events
-import matplotlib.pyplot as plt
 import numpy as np
 
-os.environ["GEN1_DATA_DIR"] = "/users/rpellerito/scratch/datasets"
-
-if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from evloader.Gen1_dataloader.PatchedSequence import PatchedGen1
-    from evloader.utils.utils_detection import render_object_detections_on_image
-else:
-    from .PatchedSequence import PatchedGen1
-    from ..utils.utils_detection import render_object_detections_on_image
+DEFAULT_GEN1_DATA_DIR = "/users/rpellerito/scratch/datasets"
+os.environ.setdefault("GEN1_DATA_DIR", DEFAULT_GEN1_DATA_DIR)
 
 DEBUG = False
 
+
+def load_patched_gen1():
+    if __package__ in (None, ""):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from evloader.Gen1_dataloader.PatchedSequence import PatchedGen1
+    else:
+        from .PatchedSequence import PatchedGen1
+
+    return PatchedGen1
+
+
+def load_detection_renderer():
+    if __package__ in (None, ""):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from evloader.utils.utils_detection import render_object_detections_on_image
+    else:
+        from ..utils.utils_detection import render_object_detections_on_image
+
+    return render_object_detections_on_image
+
+
+def parse_patch_ratio(values):
+    parts = []
+    for value in values:
+        cleaned = value.strip().strip("[]()").replace(",", " ")
+        parts.extend(part for part in cleaned.split() if part)
+
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            "patch ratio must contain exactly two integers, e.g. --patch-ratio 30 36"
+        )
+
+    try:
+        n_h, n_w = (int(part) for part in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("patch ratio values must be integers") from exc
+
+    if n_h <= 0 or n_w <= 0:
+        raise argparse.ArgumentTypeError("patch ratio values must be positive")
+
+    return n_h, n_w
+
+
+def build_arg_parser():
+    parser = argparse.ArgumentParser(description="Generate cached patched Gen1 data.")
+    parser.add_argument(
+        "--patch-ratio",
+        "--patch_ratio",
+        nargs="+",
+        default=("60", "72"),
+        help="Patch grid as two integers. Examples: --patch-ratio 30 36 or --patch-ratio 30,36",
+    )
+    parser.add_argument(
+        "--data-dir",
+        default=os.environ.get("GEN1_DATA_DIR", DEFAULT_GEN1_DATA_DIR),
+        help="Directory containing the gen1 dataset folder.",
+    )
+    parser.add_argument("--batch-size", default=30, type=int)
+    parser.add_argument("--num-workers", default=None, type=int)
+    parser.add_argument("--num-events-per-sample", default=100000, type=int)
+
+    preprocess_group = parser.add_mutually_exclusive_group()
+    preprocess_group.add_argument("--preprocess-again", dest="preprocess_again", action="store_true")
+    preprocess_group.add_argument("--no-preprocess-again", dest="preprocess_again", action="store_false")
+    parser.set_defaults(preprocess_again=True)
+
+    parser.add_argument(
+        "--skip-preview",
+        action="store_true",
+        help="Only generate the cache; skip setup, dataloader fetch, and debug visualizations.",
+    )
+    return parser
+
 def visualise_patch(x, y, p, t, width, height, sequence_id):
+    from evlicious import Events
+    import matplotlib.pyplot as plt
+
     t = t.astype(np.int64)
     p = p.astype(np.int8)
     ev = Events(x=x, y=y, p=p, t=t, width=width, height=height)
@@ -33,6 +101,8 @@ def visualise_stitched_patches(batch, batch_idx, n_h, n_w, img_w, img_h, sequenc
     """
     Stitches local-coordinate patches from a dense batch back into a global image.
     """
+    import matplotlib.pyplot as plt
+
     # 1. Extract data for the specific batch index
     # x is (Max_S, 4) -> [x_local, y_local, t, p]
     events = batch.x[batch_idx]
@@ -85,35 +155,53 @@ def visualise_stitched_patches(batch, batch_idx, n_h, n_w, img_w, img_h, sequenc
     plt.close()
     return stitched_image
 
-def test_gen1_dataloader():
+def test_gen1_dataloader(args):
+    PatchedGen1 = load_patched_gen1()
+    patch_h, patch_w = args.patch_ratio
+    os.environ["GEN1_DATA_DIR"] = args.data_dir
+    processed_dataset_path = os.path.join(
+        os.environ["GEN1_DATA_DIR"],
+        "gen1",
+        f"processed_patch_{patch_h}_{patch_w}",
+    )
+
     print(f"Data Directory set to: {os.environ['GEN1_DATA_DIR']}")
+    print(f"Patch ratio set to: [{patch_h}, {patch_w}]")
+    print(f"Processed cache path: {processed_dataset_path}")
     
     # 2. INSTANTIATE THE DATAMODULE
     # Tip: Set num_workers=0 for debugging. It forces the dataloader to run 
     # on the main thread, making error tracebacks much easier to read!
     print("Initializing Gen1 DataModule...")
-    if DEBUG:
+    if args.num_workers is not None:
+        num_workers = args.num_workers
+    elif DEBUG:
         print("⚠️ DEBUG MODE: Setting num_workers=0 for easier tracebacks.")
         num_workers = 0
     else:
         num_workers = 64
-    preprocess_again = True
+    preprocess_again = args.preprocess_again
     
     data_module = PatchedGen1(
-        batch_size=30, 
+        batch_size=args.batch_size,
         shuffle=False, 
         num_workers=num_workers, 
         pin_memory=False,
-        num_events_per_sample=100000,
-        n_patches_h=60,
-        n_patches_w=72,
-        preprocess_again=preprocess_again
+        num_events_per_sample=args.num_events_per_sample,
+        n_patches_h=patch_h,
+        n_patches_w=patch_w,
+        preprocess_again=preprocess_again,
+        processed_dataset_path=processed_dataset_path,
     )
     
     # 3. RUN THE LIGHTNING LIFECYCLE
     print("Running prepare_data() ... (This will process .dat to .pkl if needed)")
     if preprocess_again:
         data_module.prepare_data()
+
+    if args.skip_preview:
+        print("Skipping dataloader preview.")
+        return
     
     print("Running setup() ... (This builds the train/val dataset objects)")
     data_module.setup()
@@ -165,9 +253,12 @@ def test_gen1_dataloader():
             "w": batch.bbox[bbox_batch_mask, 3].numpy(),  # w
             "h": batch.bbox[bbox_batch_mask, 4].numpy()  # h
         }
+        render_object_detections_on_image = load_detection_renderer()
         gt_img = render_object_detections_on_image(
             stitched_image.copy(), tracks, label="gt", linewidth=2, show_conf=False
             )
+        import matplotlib.pyplot as plt
+
         plt.figure(figsize=(10, 8))
         plt.imshow(gt_img)
         plt.title(f"Stitched Patches with GT BBoxes | Seq: batch_0")
@@ -185,8 +276,19 @@ def test_gen1_dataloader():
         print(f"Total events in batch: {len(batch.x)}")
         print("-" * 50)
 
+def main():
+    parser = build_arg_parser()
+    args = parser.parse_args()
+    try:
+        args.patch_ratio = parse_patch_ratio(args.patch_ratio)
+    except argparse.ArgumentTypeError as exc:
+        parser.error(str(exc))
+
+    test_gen1_dataloader(args)
+
+
 if __name__ == "__main__":
     try:
-        test_gen1_dataloader()
+        main()
     except KeyboardInterrupt:
         print("\nInterrupted by user. Preprocessing workers were stopped.")
